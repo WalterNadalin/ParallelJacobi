@@ -9,7 +9,8 @@ physical interpretation of the equations is they describe the behavior
 of potentials.
 
 The equation has the form:
-![Equation 1](./jacobiEq1.jpg)
+
+$$\frac{\partial^2\psi}{\partial^2 x^2}+\frac{\partial^2\psi}{\partial^2 y^2}+=0$$.
 
 A practical solution to this equation is the use of a Jacobi iteration
 that employs numerical second derivatives. Lets assume that we would
@@ -55,7 +56,9 @@ the algorithm.
     updating formula, based on numerical computation of second
     derivatives, is:
     
-    ![Equation 2](eqn.PNG)
+    $$
+    V_{i,j}^{\text{new}}=frac{1}{4}\left(V_{i+1,j}+V_{i-1,j}+V_{i,j+1}+V_{i,j-1}\right)
+    $$.
     
 5.  After updating, copy the new matrix into the old's memory and
     continue iterations until completion.
