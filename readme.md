@@ -24,7 +24,7 @@ Use:
 - `make (mpi)run [dim=%d] [itr=%d] ([prc=%d])` to compile and run (parallel) serial version
 
 Where `dim` dimension of the internal grid, `itr` number of iterations and `prc` number of processes.
-Will produce `plot/solution.dat`.
+Will produce *lot/solution.dat*
 
 
 ## Plot
@@ -33,14 +33,14 @@ Use:
 
 <img src="./aux/result.png" alt="Drawing" style="width: 500px;"/>
 
-Will produce `plot/result.png`.
-Requires `plot/solution.dat` to work properly.
+Will produce *lot/result.png*
+Requires *plot/solution.dat* to work properly.
 
 ## Other
 Use:
 - `make clean` to clean up
-- `make (mpi)frames [dim=%d] [itr=%d] ([prc=%d]) [frames=%d]` to create `images\*.png` frames using (parallel) serial version
-- `make gif [delay=%d]` to create GIF, requires `images\*.png` frames to work properly
+- `make (mpi)frames [dim=%d] [itr=%d] ([prc=%d]) [frames=%d]` to create *images\\*.png* frames using (parallel) serial version
+- `make gif [delay=%d]` to create GIF, requires *images\\\*.png* frames to work properly
 
 Where `frames` number of images produced and `delay` time delay between frames in the GIF.
 
