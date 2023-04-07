@@ -36,7 +36,7 @@ implementing. Figure 1 shows a diagram of the grid that will result from
 the algorithm.
 
 1.  Allocate and specify a 2D array defining an evenly spaced grid of
-    square dimension. You will need to leave space for the boundaries,
+    square dimension. Leave space for the boundaries,
     as they do not belong to the main grid (i.e. a 1024 x 1024 matrix
     would need to be allocated as 1026x1026 to leave room for the
     borders.
@@ -44,7 +44,7 @@ the algorithm.
 2.  Setup the initial constant boundary conditions. The value at the
     lower left hand corner of the of the grid will be fixed at 100.00,
     and the value ascending and to the right will be set to a linear
-    gradient reaching zero at the opposite corners (see Figure 1). The
+    gradient reaching zero at the opposite corners (see [Figure1]). The
     rest of the borders will be fixed at zero. Please note, these
     boundaries will remain constant throughout the simulation.
     
