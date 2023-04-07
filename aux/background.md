@@ -10,7 +10,7 @@ of potentials.
 
 The equation has the form:
 
-$$\frac{\partial^2\psi}{\partial^2 x^2}+\frac{\partial^2\psi}{\partial^2 y^2}+=0.$$
+$$\frac{\partial^2\psi}{\partial^2 x^2}+\frac{\partial^2\psi}{\partial^2 y^2}=0.$$
 
 A practical solution to this equation is the use of a Jacobi iteration
 that employs numerical second derivatives. Lets assume that we would
