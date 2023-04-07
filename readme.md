@@ -40,7 +40,7 @@ Requires *plot/solution.dat* to work properly.
 Use:
 - `make clean` to clean up
 - `make (mpi)frames [dim=%d] [itr=%d] ([prc=%d]) [frames=%d]` to create *images\\*.png* frames using (parallel) serial version
-- `make gif [delay=%d]` to create GIF, requires *images\\\*.png* frames to work properly
+- `make gif [delay=%d]` to create GIF, requires *images/\*.png* frames to work properly
 
 Where `frames` number of images produced and `delay` time delay between frames in the GIF.
 
