@@ -30,4 +30,4 @@ Please refer to [parallelization](./aux/hints.md).
 
 <img src="./aux/ref2.png" alt="Drawing" style="width: 1000px;"/>
 
-![Alt Text](aux/animation.gif)
+![]("./aux/animation.gif")
