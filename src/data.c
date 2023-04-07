@@ -1,11 +1,6 @@
 #include "data.h"
-#include "serial_jacobi.h"
 
-#ifdef MPI
-#include "MPI_jacobi.h"
-#endif
-
-void save(double *mat, int dim, char *name){
+void print(double *mat, int dim, char *name){
   int i, j;
   const int grd = dim + 2;
   const double h = 1.f / (grd);
@@ -16,11 +11,13 @@ void save(double *mat, int dim, char *name){
     for(j = 0; j < grd; ++j)
       fprintf(file, "%f\t%f\t%f\n", h * (j + 0.5), h * (grd - 1 - i + 0.5), mat[i * grd + j]);
       
-   fclose(file);
+  fflush(file);
+  fsync(fileno(file));
+  fclose(file);
 }
 
 // A Simple timer for measuring the walltime
-double seconds(){
+double seconds() {
 	struct timeval tmp;
 	double sec;
 	gettimeofday(&tmp, (struct timezone *)0);
@@ -57,10 +54,9 @@ int get_parameters(int *argc, char **argv, int *dim, int *itr) {
 }
 
 #ifdef MPI
-void distributed_save(double* mat, int dim, char *name) {
+void gather(double* mat, int dim, double *dat) {
   int rnk, prc, lcl, rst, gbl, grd = dim + 1; 
   int *counts, *displs;
-  double *gather;
 
   MPI_Comm_rank(MPI_COMM_WORLD, &rnk);
   MPI_Comm_size(MPI_COMM_WORLD, &prc);
@@ -70,7 +66,6 @@ void distributed_save(double* mat, int dim, char *name) {
   lcl = (rnk < rst) ? grd / prc + 1 : grd / prc; // Local rows of the horizontal slices
 
   if(rnk == 0) {
-    gather = (double *)malloc(sizeof(double) * grd * grd);
   	counts = (int *)malloc(prc);
     displs = (int *)malloc(prc);
     get_counts(counts, displs, dim);
@@ -78,50 +73,67 @@ void distributed_save(double* mat, int dim, char *name) {
   	mat = mat + grd;
   }
   
-  MPI_Gatherv(mat, grd * lcl, MPI_DOUBLE, gather, counts, displs, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Gatherv(mat, grd * lcl, MPI_DOUBLE, dat, counts, displs, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   
   if(rnk == 0) {
-    save(gather, dim, name);
     free(counts);
     free(displs);
-    free(gather);
   }
-  
-  MPI_Barrier(MPI_COMM_WORLD);
 }
 #endif
 
-int test(char *data, int dim, int itr) {
-  double *old, *new; // Matrices
-  int i, grd, bin, bts;
-  double nil;
-
+void save(double* mat, int dim, char *name) {
+#ifdef MPI
+	int rnk, grd;
+  double *dat;
+  
   grd = dim + 2;
-  bts = sizeof(double) * grd * grd;
-  old = (double *)malloc(bts);
-  new = (double *)malloc(bts);
-
-  serial_jacobi(old, new, dim, itr, &nil);
-
-  FILE *file = fopen(data, "r");
-  for (i = 0; i < grd * grd; i++) bin = fscanf(file, "%*f %*f %lf", new + i);
-  fclose(file);
   
-  double eps = 1e-6;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rnk);
 
-  save(old, dim, "plot/check.dat");
-  for (int i = 0; i < grd * grd; i++) {
-    if(old[i] - new[i] > eps || old[i] - new[i] < -eps) {
-      printf("%d: %f\n", i, old[i] - new[i]);
-      free(old);
-  		free(new);
-      return 0;
-    }
+  if(rnk == 0) dat = (double *)malloc(sizeof(double) * grd * grd);
+  
+  gather(mat, dim, dat);
+  
+  if(rnk == 0)  {
+  	print(dat, dim, name);
+    free(dat);
   }
+#else
+	print(mat, dim, name);
+#endif
 
-  free(old);
-  free(new);
-  
-  return 1;
 }
 
+void plot(double *mat, int dim, char *title) {
+	char *line = NULL;
+	size_t len = 0;
+	ssize_t read;
+	int i, j, grd = dim + 2;
+  const double h = 1.f / (grd);
+
+	FILE *gnuplotPipe = popen("gnuplot -persistent", "w"), *tmp = fopen("plot/plot.plt", "r");
+  
+  char str[80];
+  strcpy(str, "set output \'");
+  strcat(str, title);
+  strcat(str, "\'");
+  fprintf(gnuplotPipe, "%s\n", str);
+
+	while((read = getline(&line, &len, tmp)) != -1) {
+		fprintf(gnuplotPipe, "%s\n", line);
+	}
+	
+  fprintf(gnuplotPipe, "plot '-' with image\n");
+  
+  for(i = 0; i < grd; ++i)
+    for(j = 0; j < grd; ++j)
+      fprintf(gnuplotPipe, "%lf %lf %lf\n", h * (j + 0.5), h * (grd - 1 - i + 0.5), mat[i * grd + j]);
+      
+  fprintf(gnuplotPipe, "e");
+	fflush(gnuplotPipe);
+	fsync(fileno(gnuplotPipe));
+	
+	fclose(tmp);
+	if(line) free(line);
+}

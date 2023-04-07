@@ -2,6 +2,8 @@
 dim = 10
 itr  = 100
 prc = 4
+fps = 20
+frames = 200
 
 # Compiler
 CC = cc
@@ -39,11 +41,19 @@ mpirun: clean mpi
 	mpirun -np $(prc) ./$(EXE) $(dim) $(itr)
 
 clean:
-	@rm -f *$(EXE) plot/solution.dat src/*.o *.o
+	@rm -f *$(EXE) plot/solution.dat src/*.o *.o video/*.png
 
 plot:
 	@gnuplot -p plot/plot.plt
+	
+frames: CFLAGS += -DFRAMES=$(frames)
+frames: run
+	
+mpiframes: CFLAGS += -DFRAMES=$(frames)
+mpiframes: mpirun
 
+gif:
+	@magick -delay $(fps) video/*.png animation.gif
 
 .PHONY: clean plot all mpi
 

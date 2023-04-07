@@ -1,14 +1,17 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include "serial_jacobi.h"
 #include "data.h"
+#include "simulation.h"
+#include "serial.h"
 
 #ifdef MPI
-#include "MPI_jacobi.h"
 #include <mpi.h>
 #endif
 
+#define NUM_COMMANDS 11
+
 int main(int argc, char** argv){
+
 #ifdef MPI
   MPI_Init(&argc, &argv);
   
@@ -37,29 +40,20 @@ int main(int argc, char** argv){
   old = (double *)malloc(bts);
   new = (double *)malloc(bts);
 
+	jacobi(old, new, dim, itr, &time);
+	save(old, dim, data);
+	
+	if(old) free(old);
+  if(new) free(new);
+
 #ifdef MPI
-  // grid initialization
-  MPI_jacobi(old, new, dim, itr, &time);
-  distributed_save(old, dim, data);
   if(rnk == 0) {
-#else
-  serial_jacobi(old, new, dim, itr, &time);
-  save(old, dim, data);
-#endif 
-  if(test(data, dim, itr)) printf("\nCompatible results\n");
-	else printf("\nNON compatible results\n");
-	printf("\nElapsed time = %f seconds\n", time);
-#ifdef MPI
+    if(test(data, dim, itr)) printf("\nCompatible results\n");
+	  else printf("\nNON compatible results\n");
 	}
+	
+	MPI_Finalize();
+#endif 
 
-  MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
-  free(old);
-  free(new);
-  
   return 0;
 }
-
-
-
