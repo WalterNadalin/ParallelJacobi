@@ -61,6 +61,6 @@ the algorithm.
 5.  After updating, copy the new matrix into the old's memory and
     continue iterations until completion.
 
-![Figure1](serial.jpg)
+![Figure1](serial_jacobi.jpg)
 
 
