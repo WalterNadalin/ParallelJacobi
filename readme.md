@@ -5,7 +5,7 @@ Please refer to [background](./aux/background.md).
 
 ### Parallelization
 ---
-Please refer to [parallelization](./aux/hints.md).
+Please refer to [parallelization](./aux/parallelization.md).
 
 **Dependencies**:
 - parallel version requies **mpicc**
