@@ -24,10 +24,10 @@ Please refer to [parallelization](./aux/hints.md).
 ## Reference result (matrix size 60, 2000 iterations)
 ### Initial distribution of temperature
 
-<img src="./aux/init.png" alt="Drawing" style="width: 800px;"/>
+<img src="./aux/init.png" alt="Drawing" style="width: 500px;"/>
 
 ### Final distribution of temperature (after 2000 iterations)
 
-<img src="./aux/result.png" alt="Drawing" style="width: 1000px;"/>
+<img src="./aux/result.png" alt="Drawing" style="width: 500px;"/>
 
 ![](./aux/animation.gif)
