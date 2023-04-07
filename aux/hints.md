@@ -7,9 +7,9 @@ The parameters of the algorithm are such:
 
 1.  The grid matrix must be completely distributed, no replicating the
     matrix on all processors. In this exercise, only use a 1 dimensional decomposition (see
-    [Figure 2](#Figure_2)).
+    [Figure_2](#Figure_2)).
     
-    ![Figure 2](jacobiFigure2.jpg)
+    ![Figure 2](paralle_jacobi.jpg)
     
 2.  The whole process must be parallel, that includes initialization of
     the grid and boundary conditions, the iterative evolution and the final dump on file of the resulting grid. 
