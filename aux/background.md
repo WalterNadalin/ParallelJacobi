@@ -44,7 +44,7 @@ the algorithm.
 2.  Setup the initial constant boundary conditions. The value at the
     lower left hand corner of the of the grid will be fixed at 100.00,
     and the value ascending and to the right will be set to a linear
-    gradient reaching zero at the opposite corners (see [Figure1](#Figure 1)). The
+    gradient reaching zero at the opposite corners (see [Figure 1](#Figure1)). The
     rest of the borders will be fixed at zero. Please note, these
     boundaries will remain constant throughout the simulation.
     
