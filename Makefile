@@ -2,7 +2,7 @@
 dim = 10
 itr  = 100
 prc = 4
-fps = 20
+delay = 20
 frames = 200
 
 # Compiler
@@ -53,7 +53,7 @@ mpiframes: CFLAGS += -DFRAMES=$(frames)
 mpiframes: mpirun
 
 gif:
-	@magick -delay $(fps) video/*.png animation.gif
+	@magick -delay $(delay) video/*.png animation.gif
 
 .PHONY: clean plot all mpi
 
