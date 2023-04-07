@@ -21,7 +21,7 @@ Use:
 
 Will produce *jacobi.x* executable.
 
-# Execution
+## Execution
 Use:
 - `make (mpi)run [dim=%d] [itr=%d] ([prc=%d])` to compile and run (parallel) serial version
 
