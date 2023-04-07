@@ -29,3 +29,5 @@ Please refer to [parallelization](./aux/hints.md).
 ### Final distribution of temperature (after 2000 iterations)
 
 <img src="./aux/ref2.png" alt="Drawing" style="width: 1000px;"/>
+
+![Alt Text](aux/animation.gif)
