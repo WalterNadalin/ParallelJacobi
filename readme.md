@@ -1,11 +1,13 @@
 # Numerial solution of the Laplace Equation by Jacobi method
 ### Background
----
 Please refer to [background](./aux/background.md).
 
-### Parallelization
 ---
+
+### Parallelization
 Please refer to [parallelization](./aux/parallel.md).
+
+---
 
 **Dependencies**:
 - parallel version requies **mpicc**
