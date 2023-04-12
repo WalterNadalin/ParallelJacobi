@@ -2,56 +2,73 @@
 #include <stdio.h>
 #include "data.h"
 #include "simulation.h"
-#include "serial.h"
+#include "test.h"
+#include <stdint.h>
+#include <limits.h>
+#include <math.h>
 
 #ifdef MPI
 #include <mpi.h>
 #endif
 
-#define NUM_COMMANDS 11
+#define RED "\x1b[31m"
+#define GREEN "\x1b[32m"
+#define NORMAL "\x1b[m"
 
 int main(int argc, char** argv){
-
 #ifdef MPI
   MPI_Init(&argc, &argv);
-  
-  int rnk, rst;
-  int *displs, *counts;
-  
-  MPI_Comm_rank(MPI_COMM_WORLD, &rnk);
 #endif
 
-  double time; // Timing variables
+  double cp_time, io_time; // Timing variables
   double *old, *new; // Matrices
-  int dim, itr, bts, grd, lcl;
-  char *data = "plot/solution.dat";
+  size_t dim, itrs, bites, grid, local;
+  int rank;
+  char *data = "plot/solution.dat"; // Where to write the results
   
   // Check on input parameters
-  if(get_parameters(&argc, argv, &dim, &itr)) return 1;
+  if(argc != 3) {
+    fprintf(stderr, "Wrong number of arguments.\nUsage: ./a.out [dimension] [iterations]\n");
+    return 1;
+  }
 
-  grd = dim + 2;
-  lcl = grd;
+  dim = atoi(argv[1]);
+  itrs = atoi(argv[2]);
+  grid = dim + 2; // Horizontal dimension of the grid
+  local = grid; // Vertical dimension of the grid (local to each process)
+  rank = 0;
   
+  // printf("%zu\n", SIZE_MAX); -> dim_max = 4294967296
+
 #ifdef MPI
-	get_dimensions(&grd, &rst, &lcl, dim);
+	size_t rest; 
+
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	get_dimensions(&rest, &local, grid);
 #endif
 
-  bts = sizeof(double) * grd * lcl;
-  old = (double *)malloc(bts);
-  new = (double *)malloc(bts);
-
-	jacobi(old, new, dim, itr, &time);
-	save(old, dim, data);
+  bites = grid * local;
+  old = (double *)calloc(bites, sizeof(double));
+  new = (double *)calloc(bites, sizeof(double));
+  
+  printf("Bytes: %ld\n", bites * sizeof(double));
+	jacobi(old, new, grid, itrs, &cp_time, &io_time);
+	save(old, grid, data);
+	if(rank == 0) printf("\nCommunication time: %f\nComputation time: %f\n", io_time, cp_time);
 	
 	if(old) free(old);
   if(new) free(new);
 
-#ifdef MPI
-  if(rnk == 0) {
-    if(test(data, dim, itr)) printf("\nCompatible results\n");
-	  else printf("\nNON compatible results\n");
+//#ifdef DEBUG
+  if(rank == 0) {
+    //if(test(data, grid, itrs)) printf("%s\nParallel and serial results are compatible\n\n", GREEN);
+  	//else printf("%s\nParallel and serial results are NOT compatible\n\n", RED);
 	}
 	
+	printf("%s", NORMAL);
+//#endif
+
+#ifdef MPI
 	MPI_Finalize();
 #endif 
 

@@ -41,7 +41,7 @@ mpirun: clean mpi
 	mpirun -np $(prc) ./$(EXE) $(dim) $(itr)
 
 clean:
-	@rm -f *$(EXE) plot/solution.dat src/*.o *.o video/*.png
+	@rm -f *$(EXE) plot/solution.dat src/*.o *.o video/*.png plot/*.png
 
 plot:
 	@gnuplot -p plot/plot.plt
@@ -55,5 +55,7 @@ mpiframes: mpirun
 gif:
 	@magick -delay $(delay) video/*.png animation.gif
 
-.PHONY: clean plot all mpi
+debug: CFLAGS += -DDEBUG
+debug: mpirun
 
+.PHONY: clean plot all mpi gif frames run mpirun debug

@@ -1,165 +1,129 @@
 #include "simulation.h"
 
-void jacobi(double *old, double *new, int dim, int itr, double *time) {
+// Complete algorithm
+void jacobi(double *old, double *new, size_t grid, size_t itrs, double *cp_time, double *io_time) {
   double *tmp;
-  double start, end;
-  
-#ifdef FRAMES
-#ifdef MPI
-  double *dat;
-	int rnk, grd = dim + 2;
-	
-  MPI_Comm_rank(MPI_COMM_WORLD, &rnk);
-	if(rnk == 0) dat = (double *)malloc(sizeof(double) * grd * grd);
-#endif
-#endif
-  
-  initialize(old, new, dim);
+  *cp_time = 0;
+  *io_time = 0;
 
-  start = seconds();
+  initialize(old, new, grid); // Initialize grid
 
-  for(int i = 0; i < itr; ++i){
-		evolve(old, new, dim);
-#ifdef FRAMES
-    int div = (itr > FRAMES) ? FRAMES : itr;
+  for(size_t i = 0; i < itrs; ++i){
+		evolve(old, new, grid, cp_time, io_time); // Compute evolution
 
-    if(!(i % (itr / div))) {
-      char str[80], num[80];
-      sprintf(num, "%03d", i / (itr / div));
-		  strcpy(str, "video/");
-		  strcat(str, num);
-		  strcat(str, ".png");
-#ifdef MPI
-  		gather(old, dim, dat);
-  		if(rnk == 0) plot(dat, dim, str);
-#else
-    	plot(old, dim, str);
-#endif
+#ifdef FRAMES // Save frames to make GIF
+    size_t div = (itrs > FRAMES) ? FRAMES : itrs;
+
+    if(!(i % (itrs / div))) {
+      char str[80];
+      sprintf(str, "video/%05d.png", i / (itrs / div)); // Title of the plot
+    	plot(old, grid - 2, str);
     }
 #endif
 
-    // Swap the pointers
-    tmp = old;
+    tmp = old; // Swap the pointers
     old = new;
     new = tmp;
   }
-
-  end = seconds();
-
-#ifdef FRAMES
-#ifdef MPI
-	if(rnk == 0) free(dat);
-#endif
-#endif
-
-  *time = end - start;
 }
 
-void evolve(double *old, double *new, int dim) {
-  int i, j, grd, lcl;
+// Compute single iteration
+void evolve(double *old, double *new, size_t grid, double *cp_time, double *io_time) {
+  double first, second, third; // For time measures
+  size_t i, j, local;
 
-  grd = dim + 2;
-  lcl = grd;
+  local = grid;   
 
 #ifdef MPI
-  int  rnk, prc, rst, dst, src;
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
+  										
+	first = seconds();
+
+#ifdef MPI
+  size_t rest, destination, source;
+  int rank, size;
   MPI_Status status;
   
-  MPI_Comm_rank(MPI_COMM_WORLD, &rnk);
-  MPI_Comm_size(MPI_COMM_WORLD, &prc);
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
   
-  get_dimensions(&grd, &rst, &lcl, dim);
+  get_dimensions(&rest, &local, grid);
  
-  dst = (rnk == 0) ? MPI_PROC_NULL : rnk - 1;
-  src = (rnk == prc - 1) ? MPI_PROC_NULL : rnk + 1;
-  MPI_Sendrecv(old + grd, grd, MPI_DOUBLE, dst, rnk + prc, old + (lcl - 1) * grd, grd, MPI_DOUBLE, src, rnk + prc + 1, MPI_COMM_WORLD, &status);
+  destination = (rank == 0) ? MPI_PROC_NULL : rank - 1; // Exchanging ghost-cells
+  source = (rank == size - 1) ? MPI_PROC_NULL : rank + 1;
+  MPI_Sendrecv(old + grid, grid, MPI_DOUBLE, destination, rank + size, 
+  						 old + (local - 1) * grid, grid, MPI_DOUBLE, source, rank + size + 1, 
+  						 MPI_COMM_WORLD, &status);
   
-  dst = (rnk == prc - 1) ? MPI_PROC_NULL : rnk + 1;
-  src = (rnk == 0) ? MPI_PROC_NULL : rnk - 1;
-  
-  MPI_Sendrecv(old + (lcl - 2) * grd, grd, MPI_DOUBLE, dst, rnk + prc, old, grd, MPI_DOUBLE, src, rnk + prc - 1, MPI_COMM_WORLD, &status);
+  destination = (rank == size - 1) ? MPI_PROC_NULL : rank + 1;
+  source = (rank == 0) ? MPI_PROC_NULL : rank - 1;
+  MPI_Sendrecv(old + (local - 2) * grid, grid, MPI_DOUBLE, destination, rank + size, 
+  						 old, grid, MPI_DOUBLE, source, rank + size - 1, MPI_COMM_WORLD, &status);
+  						 
+  MPI_Barrier(MPI_COMM_WORLD);
 #endif
+   										
+	second = seconds();
   
-  for(i = 1; i < lcl - 1; ++i) // This will be a row dominant program
-    for(j = 1; j < grd - 1; ++j)
-     new[i * grd + j] = 0.25 * (old[(i - 1) * grd + j] + old[i * grd + j + 1] + 	  
-				     										old[(i + 1) * grd + j] + old[i * grd + j - 1]); // Update
-				     										
+  for(i = 1; i < local - 1; ++i) // Computing evolution
+    for(j = 1; j < grid - 1; ++j)
+    	//sleep(0.1);
+      new[i * grid + j] = 0.25 * (old[(i - 1) * grid + j] + old[i * grid + j + 1] + 	  
+	  									  					old[(i + 1) * grid + j] + old[i * grid + j - 1]); // Update
+
+#ifdef MPI
+  MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+	third = seconds();
+
+	*io_time += second - first;
+	*cp_time += third - second;			     										
 }
 
-void initialize(double *old, double *new, int dim){
+// Initialize grid
+void initialize(double *old, double *new, size_t grid){
   double increment;
-  int i, j, grd, lcl, lwr, rnk = 0, prc = 1, rst = 0, btm = 0;
-
-  grd = dim + 2;
-  lcl = grd;
+  size_t i, j, local, lower, rest = 0, shift = 0;
+  int rank = 0, size = 1;
+  
+  local = grid;
 
 #ifdef MPI  
-  MPI_Comm_rank(MPI_COMM_WORLD, &rnk);
-  MPI_Comm_size(MPI_COMM_WORLD, &prc);
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
   
-  get_dimensions(&grd, &rst, &lcl, dim);
+  get_dimensions(&rest, &local, grid);
 #endif
 
-  lwr = rnk == 0 ? 0 : 1;
-
-  // Fill initial values  
-  for(i = lwr; i < lcl - 1; ++i) {
-    for(j = 1; j < grd; ++j) {
-    	old[i * grd + j] = 0.5;
-    	new[i * grd + j] = 0.5;
-    }
-	}
-	
-  // Set up borders 
-  increment = 100.f / (grd - 1);
-
-  if(rnk == prc - 1) {
-  	for(i = 0; i < grd; ++i) {
-      old[grd * lcl - 1 - i] = i * increment + 0.5;
-    	new[grd * lcl - 1 - i] = i * increment + 0.5;
-    }
+  lower = rank != 0; // Initial row
+  increment = 100.f / (grid - 1);
+  
+  for(i = 0; i < rank; i++) shift += (i < rest) ? (grid / size + 1) : grid / size;
+ 
+	for(i = lower; i < local - 1; ++i) { 
+	  old[i * grid] = new[i * grid] = (i - lower + shift) * increment + 0.5; // First column
+	  
+    for(j = 1; j < grid; ++j);
+    	old[i * grid + j] = new[i * grid + j] =  0.5; // Inner grid
   }
 
-#ifdef MPI
-  for(i = 0; i < rnk; i++) btm += (i < rst) ? (grd / prc + 1) : grd / prc;
-#endif
-  
-	for(i = lwr; i < lcl - 1; ++i) {
-  	old[i * grd] = (i - lwr + btm) * increment + 0.5;
-  	new[i * grd] = (i - lwr + btm) * increment + 0.5;
-	}
+  if(rank == size - 1) // Last row
+  	for(i = 0; i < grid; ++i);
+      old[grid * local - 1 - i] = new[grid * local - 1 - i] = i * increment + 0.5;
 }
 
 #ifdef MPI
-void get_dimensions(int *grd, int *rst, int *lcl, int dim) {
-  int rnk, prc;
+void get_dimensions(size_t *rest, size_t *local, size_t grid) {
+  int size, rank;
 
-  MPI_Comm_rank(MPI_COMM_WORLD, &rnk);
-  MPI_Comm_size(MPI_COMM_WORLD, &prc);
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
   
-  *grd = dim + 2;
-  *rst = *grd % prc;
-  *lcl = rnk < *rst ? *grd / prc + 1 : *grd / prc; // Local rows of the horizontal slices
-  *lcl += rnk == 0 || rnk == prc - 1 ? 1 : 2;
-  *lcl -= rnk == 0 && rnk == prc - 1 ? 1 : 0;
-}
-
-void get_counts(int *cnt, int *dsp, int dim) {
-  int i, prc, glb, rst, grd; 
-
-  MPI_Comm_size(MPI_COMM_WORLD, &prc);
-
-  grd = dim + 2;
-	glb = grd / prc;
-  rst = grd % prc;
-  dsp[0] = 0;
-
-  for(i = 0; i < prc - 1; i++) { 
-    cnt[i] = (i < rst) ? (glb + 1) * grd : glb * grd;
-    dsp[i + 1] = cnt[i] + dsp[i];
-  }
-
-  cnt[prc - 1] = glb * grd;
+  *rest = grid % size;
+  *local = rank < *rest ? grid / size + 1 : grid / size; // Local vertical dimension
+  *local += 2 - (rank == 0 || rank == size - 1); // First al last process have one only ghost `row`
+  *local -= rank == 0 && rank == size - 1; // If there's only one process
 }
 #endif
