@@ -37,8 +37,6 @@ int main(int argc, char** argv){
 	grid = dim + 2; // Horizontal dimension of the grid
 	local = grid; // Vertical dimension of the grid (local to each process)
 	rank = 0;
-  
-	// printf("%zu\n", SIZE_MAX); -> dim_max = 4294967296
 
 #ifdef MPI
 	size_t rest; 
@@ -48,24 +46,25 @@ int main(int argc, char** argv){
 #endif
 
 	bites = grid * local;
-	old = (double *)calloc(bites, sizeof(double));
-	new = (double *)calloc(bites, sizeof(double));
+	old = (double *)malloc(bites * sizeof(double));
+	new = (double *)malloc(bites * sizeof(double));
   
 	jacobi(old, new, grid, itrs, &cp_time, &io_time);
 	save(old, grid, data);
+
 	if(rank == 0) printf("\nCommunication time: %f\nComputation time: %f\n", io_time, cp_time);
 	
 	if(old) free(old);
 	if(new) free(new);
 
-//#ifdef DEBUG
+#ifdef DEBUG
 	if(rank == 0) {
-		//if(test(data, grid, itrs)) printf("%s\nParallel and serial results are compatible\n\n", GREEN);
-		//else printf("%s\nParallel and serial results are NOT compatible\n\n", RED);
+		if(test(data, grid, itrs)) printf("%s\nParallel and serial results are compatible\n\n", GREEN);
+		else printf("%s\nParallel and serial results are NOT compatible\n\n", RED);
 	}
 	
 	printf("%s", NORMAL);
-//#endif
+#endif
 
 #ifdef MPI
 	MPI_Finalize();

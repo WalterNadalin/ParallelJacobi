@@ -16,7 +16,7 @@ void jacobi(double *old, double *new, size_t grid, size_t itrs, double *cp_time,
 
 		if(!(i % (itrs / div))) {
 			char str[80];
-			sprintf(str, "video/%05d.png", i / (itrs / div)); // Title of the plot
+			sprintf(str, "video/%05zu.png", i / (itrs / div)); // Title of the plot
 			plot(old, grid - 2, str);
     }
 #endif
@@ -65,7 +65,6 @@ void evolve(double *old, double *new, size_t grid, double *cp_time, double *io_t
   
 	for(i = 1; i < local - 1; ++i) // Computing evolution
 		for(j = 1; j < grid - 1; ++j)
-    	//sleep(0.1);
 			new[i * grid + j] = 0.25 * (old[(i - 1) * grid + j] + old[i * grid + j + 1] + old[(i + 1) * grid + j] + old[i * grid + j - 1]); // Update
 
 #ifdef MPI
@@ -101,13 +100,14 @@ void initialize(double *old, double *new, size_t grid){
  	for(i = lower; i < local - 1; ++i) { 
 		old[i * grid] = new[i * grid] = (i - lower + shift) * increment + 0.5; // First column
 	  
-		for(j = 1; j < grid; ++j);
-			old[i * grid + j] = new[i * grid + j] =  0.5; // Inner grid
+		for(j = 1; j < grid; ++j)
+			old[i * grid + j] = new[i * grid + j] = 0.5; // Inner grid
   }
 
 	if(rank == size - 1) // Last row
-		for(i = 0; i < grid; ++i);
+		for(i = 0; i < grid; ++i)
 			old[grid * local - 1 - i] = new[grid * local - 1 - i] = i * increment + 0.5;
+			
 }
 
 #ifdef MPI
