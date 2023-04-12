@@ -17,28 +17,28 @@
 
 int main(int argc, char** argv){
 #ifdef MPI
-  MPI_Init(&argc, &argv);
+	MPI_Init(&argc, &argv);
 #endif
 
-  double cp_time, io_time; // Timing variables
-  double *old, *new; // Matrices
-  size_t dim, itrs, bites, grid, local;
-  int rank;
-  char *data = "plot/solution.dat"; // Where to write the results
+	double cp_time, io_time; // Timing variables
+	double *old, *new; // Matrices
+	size_t dim, itrs, bites, grid, local;
+	int rank;
+	char *data = "plot/solution.dat"; // Where to write the results
   
-  // Check on input parameters
-  if(argc != 3) {
-    fprintf(stderr, "Wrong number of arguments.\nUsage: ./a.out [dimension] [iterations]\n");
-    return 1;
+	// Check on input parameters
+	if(argc != 3) {
+		fprintf(stderr, "Wrong number of arguments.\nUsage: ./a.out [dimension] [iterations]\n");
+		return 1;
   }
 
-  dim = atoi(argv[1]);
-  itrs = atoi(argv[2]);
-  grid = dim + 2; // Horizontal dimension of the grid
-  local = grid; // Vertical dimension of the grid (local to each process)
-  rank = 0;
+	dim = atoi(argv[1]);
+	itrs = atoi(argv[2]);
+	grid = dim + 2; // Horizontal dimension of the grid
+	local = grid; // Vertical dimension of the grid (local to each process)
+	rank = 0;
   
-  // printf("%zu\n", SIZE_MAX); -> dim_max = 4294967296
+	// printf("%zu\n", SIZE_MAX); -> dim_max = 4294967296
 
 #ifdef MPI
 	size_t rest; 
@@ -47,22 +47,22 @@ int main(int argc, char** argv){
 	get_dimensions(&rest, &local, grid);
 #endif
 
-  bites = grid * local;
-  old = (double *)calloc(bites, sizeof(double));
-  new = (double *)calloc(bites, sizeof(double));
+	bites = grid * local;
+	old = (double *)calloc(bites, sizeof(double));
+	new = (double *)calloc(bites, sizeof(double));
   
-  printf("Bytes: %ld\n", bites * sizeof(double));
+	printf("Bytes: %ld\n", bites * sizeof(double));
 	jacobi(old, new, grid, itrs, &cp_time, &io_time);
 	save(old, grid, data);
 	if(rank == 0) printf("\nCommunication time: %f\nComputation time: %f\n", io_time, cp_time);
 	
 	if(old) free(old);
-  if(new) free(new);
+	if(new) free(new);
 
 //#ifdef DEBUG
-  if(rank == 0) {
-    //if(test(data, grid, itrs)) printf("%s\nParallel and serial results are compatible\n\n", GREEN);
-  	//else printf("%s\nParallel and serial results are NOT compatible\n\n", RED);
+	if(rank == 0) {
+		//if(test(data, grid, itrs)) printf("%s\nParallel and serial results are compatible\n\n", GREEN);
+		//else printf("%s\nParallel and serial results are NOT compatible\n\n", RED);
 	}
 	
 	printf("%s", NORMAL);
@@ -72,5 +72,5 @@ int main(int argc, char** argv){
 	MPI_Finalize();
 #endif 
 
-  return 0;
+	return 0;
 }

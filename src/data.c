@@ -7,33 +7,33 @@ double seconds() { // A Simple timer for measuring the walltime
 }
 
 void print(double *mat, size_t grid, char *name) { // Serial print of the grid
-  size_t i, j;
-  const double h = 1.f / (grid);
+	size_t i, j;
+	const double h = 1.f / (grid);
 
-  FILE *file = fopen(name, "w");
+	FILE *file = fopen(name, "w");
 
-  for(i = 0; i < grid; ++i)
-    for(j = 0; j < grid; ++j)
-      fprintf(file, "%f\t%f\t%f\n", h * (j + 0.5), h * (grid - 1 - i + 0.5), mat[i * grid + j]);
+	for(i = 0; i < grid; ++i)
+		for(j = 0; j < grid; ++j)
+			fprintf(file, "%f\t%f\t%f\n", h * (j + 0.5), h * (grid - 1 - i + 0.5), mat[i * grid + j]);
 
-  fclose(file);
+	fclose(file);
 }
 
 void save(double* mat, size_t grid, char *name) { // Save the grid on a file
 #ifdef MPI
 	int rank;
-  double *dat;
-  
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	double *dat;
 
-  if(rank == 0) dat = (double *)malloc(sizeof(double) * grid * grid);
-  
-  gather(mat, grid - 2, dat); // Gather the scattered slices of the grid
-  
-  if(rank == 0) {
-  	print(dat, grid, name);
-    free(dat);
-  }
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+	if(rank == 0) dat = (double *)malloc(sizeof(double) * grid * grid);
+
+	gather(mat, grid - 2, dat); // Gather the scattered slices of the grid
+
+	if(rank == 0) {
+		print(dat, grid, name);
+		free(dat);
+	}
 #else
 	print(mat, grid, name);
 #endif
@@ -44,16 +44,16 @@ void plot(double *mat, size_t dim, char *title) { // Plot the grid
 	size_t len = 0, read;
 	size_t i, j, grid = dim + 2;
 	int rank = 0;
-  const double h = 1.f / (grid);
-  char str[80];
+	const double h = 1.f / (grid);
+	char str[80];
   
 #ifdef MPI
-  double *dat;
-	
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	double *dat;
+
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
 	if(rank == 0) dat = (double *)malloc(sizeof(double) * grid * grid);
-	
+
 	gather(mat, dim, dat);
 #endif
 
@@ -79,13 +79,13 @@ void plot(double *mat, size_t dim, char *title) { // Plot the grid
 		    				h * (j + 0.5), h * (grid - 1 - i + 0.5), mat[i * grid + j]);
 #endif
 		    
-		fprintf(gnuplotPipe, "e");
-		fflush(gnuplotPipe);
-		fsync(fileno(gnuplotPipe));
-		
-		fclose(tmp);
-		if(line) free(line);
-		
+			fprintf(gnuplotPipe, "e");
+			fflush(gnuplotPipe);
+			fsync(fileno(gnuplotPipe));
+
+			fclose(tmp);
+			if(line) free(line);
+
 #ifdef MPI
 		free(dat);
 #endif
