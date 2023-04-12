@@ -51,7 +51,6 @@ int main(int argc, char** argv){
 	old = (double *)calloc(bites, sizeof(double));
 	new = (double *)calloc(bites, sizeof(double));
   
-	printf("Bytes: %ld\n", bites * sizeof(double));
 	jacobi(old, new, grid, itrs, &cp_time, &io_time);
 	save(old, grid, data);
 	if(rank == 0) printf("\nCommunication time: %f\nComputation time: %f\n", io_time, cp_time);
