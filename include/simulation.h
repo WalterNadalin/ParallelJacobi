@@ -14,7 +14,7 @@ void get_dimensions(size_t *, size_t *, size_t);
 #endif
 
 void evolve(double *, double *, size_t, double *, double *); // Evolve Jacobi
-void initialize(double *, double *, size_t); // Initialize matrices
+void initialize(double *, double *, size_t, double *); // Initialize matrices
 void jacobi(double *, double *, size_t, size_t, double *, double *);
 
 #endif

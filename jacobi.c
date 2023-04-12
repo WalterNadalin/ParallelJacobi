@@ -30,7 +30,7 @@ int main(int argc, char** argv){
 	if(argc != 3) {
 		fprintf(stderr, "Wrong number of arguments.\nUsage: ./a.out [dimension] [iterations]\n");
 		return 1;
-  }
+	}
 
 	dim = atoi(argv[1]);
 	itrs = atoi(argv[2]);

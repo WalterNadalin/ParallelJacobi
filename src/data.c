@@ -100,7 +100,7 @@ void get_counts(int *cnt, int *dsp, size_t dim) {
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
   grid = dim + 2;
-	global = grid / size;
+  global = grid / size;
   rest = grid % size;
   dsp[0] = 0;
 
@@ -125,8 +125,8 @@ void gather(double* mat, size_t dim, double *dat) { // Gather the scattered slic
   local = (rank < rst) ? grid / size + 1 : grid / size; // Local rows of the horizontal slices
 
   if(rank == 0) {
-  	counts = (int *)malloc(size);
-    displs = (int *)malloc(size);
+    counts = (int *)malloc(size * sizeof(int));
+    displs = (int *)malloc(size * sizeof(int));
     get_counts(counts, displs, dim);
   } else {
   	mat = mat + grid;

@@ -6,7 +6,7 @@ void jacobi(double *old, double *new, size_t grid, size_t itrs, double *cp_time,
 	*cp_time = 0;
 	*io_time = 0;
 
-	initialize(old, new, grid); // Initialize grid
+	initialize(old, new, grid, io_time); // Initialize grid
 
 	for(size_t i = 0; i < itrs; ++i){
 		evolve(old, new, grid, cp_time, io_time); // Compute evolution
@@ -78,12 +78,13 @@ void evolve(double *old, double *new, size_t grid, double *cp_time, double *io_t
 }
 
 // Initialize grid
-void initialize(double *old, double *new, size_t grid){
-	double increment;
+void initialize(double *old, double *new, size_t grid, double *io_time){
+	double increment, first, second;
 	size_t i, j, local, lower, rest = 0, shift = 0;
 	int rank = 0, size = 1;
   
 	local = grid;
+	first = seconds();
 
 #ifdef MPI  
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -102,12 +103,14 @@ void initialize(double *old, double *new, size_t grid){
 	  
 		for(j = 1; j < grid; ++j)
 			old[i * grid + j] = new[i * grid + j] = 0.5; // Inner grid
-  }
+	}
 
 	if(rank == size - 1) // Last row
 		for(i = 0; i < grid; ++i)
 			old[grid * local - 1 - i] = new[grid * local - 1 - i] = i * increment + 0.5;
-			
+
+	second = seconds();
+	*io_time = second - first;	
 }
 
 #ifdef MPI
