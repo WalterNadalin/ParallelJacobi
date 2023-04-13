@@ -64,11 +64,11 @@ size_t test(char *data, size_t grd, size_t itr) { // Compare result with serial 
 
 	FILE *file = fopen(data, "r");
 	for (i = 0; i < grd * grd; i++) bin = fscanf(file, "%*f %*f %lf", new + i);
+	(void)bin;
 	fclose(file);
 
 	for (size_t i = 0; i < grd * grd; i++) {
 		if(old[i] - new[i] > eps || old[i] - new[i] < -eps) {
-			printf("%ld %f %f", i, old[i], new[i]);
 			free(old);
 			free(new);
 			return 0;

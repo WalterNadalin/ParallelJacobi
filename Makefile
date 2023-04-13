@@ -14,12 +14,16 @@ INCLUDE = -I./include/
 
 # Source files
 SRCS = $(wildcard src/*.c)
-OBJ = $(SRCS:.c=.o)
 MAIN = $(wildcard *.c)
-OBJ += $(MAIN:.c=.o)
+OBJ = $(SRCS:.c=.o) $(MAIN:.c=.o)
 EXE = $(MAIN:.c=.x)
 
-all: $(EXE)
+# Libraries
+IMPI = -I${SMPI_ROOT}/include
+LMPI = -L${SMPI_ROOT}/lib -lmpiprofilesupport -lmpi_ibm
+
+# Make
+all: clean $(EXE)
 
 # Compiling the object files
 %.o: %.c 
@@ -27,36 +31,57 @@ all: $(EXE)
 
 # Compiling the executanle
 $(EXE): $(OBJ) 
-	$(CC) -o $(EXE) $(OBJ) -O3
+	$(CC) -o $(EXE) $^ $(LINK) -O3
 	rm $(OBJ)
 
 mpi: CC = mpicc
 mpi: CFLAGS += -DMPI
-mpi: all
+mpi: clean all
 
-run: clean all
+cuda: CC = pgcc
+cuda: INCLUDE += $(IMPI)
+cuda: CFLAGS += -DMPI -DCUDA
+cuda: LINK += $(LMPI)
+cuda: clean all
+
+run: all
 	./$(EXE) $(dim) $(itr)
 	
-mpirun: clean mpi
+mpirun: mpi
 	mpirun -np $(prc) ./$(EXE) $(dim) $(itr)
 
+cudarun: cuda
+	mpirun -np $(prc) ./$(EXE) $(dim) $(itr)
+
+debug: CFLAGS += -DDEBUG
+debug: run
+
+mpidebug: CFLAGS += -DDEBUG
+mpidebug: mpirun
+
+cudadebug: CFLAGS += -DDEBUG
+cudadebug: cudarun
+
+#cudadebug: CFLAGS += -DDEBUG
+#cudadebug: run
+
 clean:
-	@rm -f *$(EXE) plot/solution.dat src/*.o *.o video/*.png plot/*.png video/animation.gif
+	@rm -f *$(EXE) src/*.o *.o 
+	
+flush:
+	@rm -f video/*.png plot/*.png video/animation.gif plot/solution.dat 
 
 plot:
 	@gnuplot -p plot/plot.plt
 	
 frames: CFLAGS += -DFRAMES=$(frames)
-frames: run
+frames: flush run
 	
 mpiframes: CFLAGS += -DFRAMES=$(frames)
-mpiframes: mpirun
+mpiframes: flush mpirun
 
 gif:
 	@magick -delay $(delay) video/*.png video/animation.gif
 	@rm video/*.png
-
-debug: CFLAGS += -DDEBUG
-debug: mpirun
 
 .PHONY: clean plot all mpi gif frames run mpirun debug

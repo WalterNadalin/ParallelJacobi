@@ -23,7 +23,7 @@ int main(int argc, char** argv){
 	double cp_time, io_time; // Timing variables
 	double *old, *new; // Matrices
 	size_t dim, itrs, bites, grid, local;
-	int rank;
+	int rank = 0;
 	char *data = "plot/solution.dat"; // Where to write the results
   
 	// Check on input parameters
@@ -59,8 +59,8 @@ int main(int argc, char** argv){
 
 #ifdef DEBUG
 	if(rank == 0) {
-		if(test(data, grid, itrs)) printf("%s\nParallel and serial results are compatible\n\n", GREEN);
-		else printf("%s\nParallel and serial results are NOT compatible\n\n", RED);
+		if(test(data, grid, itrs)) printf("%s\nResults are compatible\n\n", GREEN);
+		else printf("%s\nResults are NOT compatible\n\n", RED);
 	}
 	
 	printf("%s", NORMAL);
