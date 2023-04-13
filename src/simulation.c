@@ -6,9 +6,10 @@ void jacobi(double *old, double *new, size_t grid, size_t itrs, double *cp_time,
 	*cp_time = 0;
 	*io_time = 0;
 
+// #pragma acc data copy(old) create(new) copyin(grid) copy(io_time)
 	initialize(old, new, grid, io_time); // Initialize grid
 
-	for(size_t i = 0; i < itrs; ++i){
+	for(size_t i = 0; i < itrs; ++i) {
 		evolve(old, new, grid, cp_time, io_time); // Compute evolution
 
 #ifdef FRAMES // Save frames to make GIF
@@ -18,13 +19,13 @@ void jacobi(double *old, double *new, size_t grid, size_t itrs, double *cp_time,
 			char str[80];
 			sprintf(str, "video/%05zu.png", i / (itrs / div)); // Title of the plot
 			plot(old, grid - 2, str);
-    }
+		}
 #endif
 
 		tmp = old; // Swap the pointers
 		old = new;
 		new = tmp;
-  }
+	}
 }
 
 // Compute single iteration
@@ -62,7 +63,8 @@ void evolve(double *old, double *new, size_t grid, double *cp_time, double *io_t
 #endif
    										
 	second = seconds();
-  
+
+// #pragma acc parallel loop
 	for(i = 1; i < local - 1; ++i) // Computing evolution
 		for(j = 1; j < grid - 1; ++j)
 			new[i * grid + j] = 0.25 * (old[(i - 1) * grid + j] + old[i * grid + j + 1] + old[(i + 1) * grid + j] + old[i * grid + j - 1]); // Update
