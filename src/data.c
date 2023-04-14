@@ -17,7 +17,7 @@ void print(double *mat, size_t grid, char *name) { // Serial print of the grid
 void save(double *mat, size_t grid, char *name) { // Save the grid on a file
 #ifdef MPI
   int rank;
-  double *dat;
+  double *dat = NULL;
 
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
@@ -43,7 +43,7 @@ void plot(double *mat, size_t grid, char *title) { // Plot the grid
   char str[80];
 
 #ifdef MPI
-  double *dat;
+  double *dat = NULL;
 
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
@@ -87,7 +87,8 @@ void plot(double *mat, size_t grid, char *title) { // Plot the grid
       free(line);
 
 #ifdef MPI
-    free(dat);
+    if (rank == 0)
+      free(dat);
 #endif
   }
 }
@@ -116,7 +117,6 @@ void gather(double *mat, size_t grid, double *dat) {
 }
 
 void get_counts(int *counts, int *displs, size_t grid) {
-  size_t count, displ;
   int i, size;
 
   MPI_Comm_size(MPI_COMM_WORLD, &size);

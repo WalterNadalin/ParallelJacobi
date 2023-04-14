@@ -9,4 +9,4 @@ set yrange [0.0:1.0]
 set size square
 
 set output 'plot/result.png'
-plot 'plot/solution.dat' with image
+plot 'data/solution.dat' with image
