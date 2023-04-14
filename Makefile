@@ -1,6 +1,9 @@
+BLUE = \033[0;34m
+NC = \033[0m
+
 # Inputs for the executables
 dim = 10
-itr  = 100
+iters = 100
 prc = 4
 delay = 20
 frames = 200
@@ -32,7 +35,7 @@ all: clean $(EXE)
 # Compiling the executanle
 $(EXE): $(OBJ) 
 	$(CC) -o $(EXE) $^ $(LINK) -O3
-	rm $(OBJ)
+	@rm $(OBJ)
 
 mpi: CC = mpicc
 mpi: CFLAGS += -DMPI
@@ -45,13 +48,13 @@ cuda: LINK += $(LMPI)
 cuda: clean all
 
 run: all
-	./$(EXE) $(dim) $(itr)
+	./$(EXE) $(dim) $(iters)
 	
 mpirun: mpi
-	mpirun -np $(prc) ./$(EXE) $(dim) $(itr)
+	mpirun -np $(prc) ./$(EXE) $(dim) $(iters)
 
 cudarun: cuda
-	mpirun -np $(prc) ./$(EXE) $(dim) $(itr)
+	mpirun -np $(prc) ./$(EXE) $(dim) $(iters)
 
 debug: CFLAGS += -DDEBUG
 debug: run
@@ -62,9 +65,6 @@ mpidebug: mpirun
 cudadebug: CFLAGS += -DDEBUG
 cudadebug: cudarun
 
-#cudadebug: CFLAGS += -DDEBUG
-#cudadebug: run
-
 clean:
 	@rm -f *$(EXE) src/*.o *.o 
 	
@@ -72,8 +72,12 @@ flush:
 	@rm -f video/*.png plot/*.png video/animation.gif plot/solution.dat 
 
 plot:
-	@gnuplot -p plot/plot.plt
-	
+	@if [ -e plot/solution.dat ]; then\
+		gnuplot -p plot/plot.plt || echo "Please install ${BLUE}gnuplot${NC} to run this command";\
+	else\
+		echo "Please generate data using the command ${BLUE}make run${NC}";\
+	fi
+
 frames: CFLAGS += -DFRAMES=$(frames)
 frames: flush run
 	
@@ -81,7 +85,13 @@ mpiframes: CFLAGS += -DFRAMES=$(frames)
 mpiframes: flush mpirun
 
 gif:
-	@magick -delay $(delay) video/*.png video/animation.gif
-	@rm video/*.png
+	@if [ -e video/00000.png ]; then\
+		magick -delay $(delay) video/*.png video/animation.gif || echo "Please install ${BLUE}imagemagick${NC} to run this command";\
+	else\
+		echo "Please generate frames using the command ${BLUE}make frames${NC}";\
+	fi
 
-.PHONY: clean plot all mpi gif frames run mpirun debug
+format: $(SRCS) $(MAIN)
+	@clang-format -i $^ -verbose || echo "Please install ${BLUE}clang-format${NC} to run this command"
+
+.PHONY: clean plot all mpi cuda gif frames run mpirun cudarun debug mpidebug cudadebug format
