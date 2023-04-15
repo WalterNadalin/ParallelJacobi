@@ -122,8 +122,8 @@ void get_counts(int *counts, int *displs, size_t grid) {
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
   for (i = 0; i < size; i++) {
-    counts[i] = get_count(grid, i, 0);
-    displs[i] = get_displacement(grid, i, 0);
+    counts[i] = get_count(grid, i, size, 0);
+    displs[i] = get_displacement(grid, i, size, 0);
   }
 }
 #endif

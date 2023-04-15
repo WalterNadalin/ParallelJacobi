@@ -3,18 +3,58 @@
 // Complete algorithm
 void jacobi(double *old, double *new, size_t grid, size_t itrs, double *cp_time,
             double *io_time) {
-#ifdef CUDA
-#pragma acc data copy(old) create(new) copyin(grid) copy(io_time) copy(cp_time)
-  {
+  double first, second, third; // For time measures
+  size_t i, local;
+  int rank = 0, size = 1;
+
+#ifdef MPI
+  size_t first_dst, second_dst, first_src, second_src;
+  MPI_Status status;
+
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+  first_dst = (rank == 0) ? MPI_PROC_NULL : rank - 1;
+  first_src = (rank == size - 1) ? MPI_PROC_NULL : rank + 1;
+  second_dst = (rank == size - 1) ? MPI_PROC_NULL : rank + 1;
+  second_src = (rank == 0) ? MPI_PROC_NULL : rank - 1;
 #endif
+
+  local = get_local(grid, rank, size, 1);
+
+#ifdef OPENACC
+#pragma acc data copy(old) create(new) copyin(grid) copy(io_time) copy(cp_time)
+#endif
+  {
     double *tmp;
     *cp_time = 0;
     *io_time = 0;
 
-    initialize(old, new, grid, io_time); // Initialize grid
+    initialize(old, new, grid, rank, size, io_time); // Initialize grid
 
-    for (size_t i = 0; i < itrs; ++i) {
-      evolve(old, new, grid, cp_time, io_time); // Compute evolution
+    for (i = 0; i < itrs; ++i) {
+
+      first = seconds();
+
+#ifdef MPI // Exchanging ghost-cells
+      MPI_Sendrecv(old + grid, grid, MPI_DOUBLE, first_dst, rank + size,
+                   old + (local - 1) * grid, grid, MPI_DOUBLE, first_src,
+                   rank + size + 1, MPI_COMM_WORLD, &status);
+
+      MPI_Sendrecv(old + (local - 2) * grid, grid, MPI_DOUBLE, second_dst,
+                   rank + size, old, grid, MPI_DOUBLE, second_src,
+                   rank + size - 1, MPI_COMM_WORLD, &status);
+
+      MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+      second = seconds();
+
+      evolve(old, new, grid, local, cp_time, io_time); // Compute evolution
+
+      third = seconds();
+      *io_time += second - first;
+      *cp_time += third - second;
 
 #ifdef FRAMES // Save frames to make GIF
       size_t div = (itrs > FRAMES) ? FRAMES : itrs;
@@ -30,79 +70,29 @@ void jacobi(double *old, double *new, size_t grid, size_t itrs, double *cp_time,
       old = new;
       new = tmp;
     }
-#ifdef CUDA
   }
-#endif
 }
 
 // Compute single iteration
-void evolve(double *old, double *new, size_t grid, double *cp_time,
-            double *io_time) {
-  double first, second, third; // For time measures
-  size_t i, j, local;
-  int rank = 0;
+void evolve(double *old, double *new, size_t grid, size_t local,
+            double *cp_time, double *io_time) {
+  size_t i, j; // , local;
 
-#ifdef MPI
-  size_t destination, source;
-  int size;
-  MPI_Status status;
-
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
-  MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
-  first = seconds();
-  local = get_local(grid, rank, 1);
-
-#ifdef MPI // Exchanging ghost-cells
-  destination = (rank == 0) ? MPI_PROC_NULL : rank - 1;
-  source = (rank == size - 1) ? MPI_PROC_NULL : rank + 1;
-  MPI_Sendrecv(old + grid, grid, MPI_DOUBLE, destination, rank + size,
-               old + (local - 1) * grid, grid, MPI_DOUBLE, source,
-               rank + size + 1, MPI_COMM_WORLD, &status);
-
-  destination = (rank == size - 1) ? MPI_PROC_NULL : rank + 1;
-  source = (rank == 0) ? MPI_PROC_NULL : rank - 1;
-  MPI_Sendrecv(old + (local - 2) * grid, grid, MPI_DOUBLE, destination,
-               rank + size, old, grid, MPI_DOUBLE, source, rank + size - 1,
-               MPI_COMM_WORLD, &status);
-
-  MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
-  second = seconds();
-
-  //#pragma acc parallel loop
   for (i = 1; i < local - 1; ++i) // Computing evolution
     for (j = 1; j < grid - 1; ++j)
       new[i * grid + j] =
           0.25 * (old[(i - 1) * grid + j] + old[i * grid + j + 1] +
                   old[(i + 1) * grid + j] + old[i * grid + j - 1]); // Update
-
-#ifdef MPI
-  MPI_Barrier(MPI_COMM_WORLD);
-#endif
-
-  third = seconds();
-  *io_time += second - first;
-  *cp_time += third - second;
 }
 
 // Initialize grid
-void initialize(double *old, double *new, size_t grid, double *io_time) {
+void initialize(double *old, double *new, size_t grid, int rank, int size, double *io_time) {
   double increment, first, second;
   size_t i, j, local, lower, displ;
-  int rank = 0, size = 1;
-
-#ifdef MPI
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
-#endif
 
   first = seconds();
-  local = get_local(grid, rank, 0); // Local dimension without ghost cells
-  displ = get_displacement(grid, rank, 0) / grid; // Global rows displacement
+  local = get_local(grid, rank, size, 0); // Local dimension without ghost cells
+  displ = get_displacement(grid, rank, size, 0) / grid; // Global rows displacement
   lower = rank != 0;                              // Initial row
   increment = 100.f / (grid - 1);
 
@@ -115,7 +105,7 @@ void initialize(double *old, double *new, size_t grid, double *io_time) {
   }
 
   if (rank == size - 1) {                    // Last row
-    size_t count = get_count(grid, rank, 1); // Local number of data
+    size_t count = get_count(grid, rank, size, 1); // Local number of data
 
     for (i = 0; i < grid; ++i)
       old[count - 1 - i] = new[count - 1 - i] = i *increment + 0.5;
@@ -125,13 +115,9 @@ void initialize(double *old, double *new, size_t grid, double *io_time) {
   *io_time = second - first;
 }
 
-size_t get_local(size_t grid, int rank, int ghost) {
-  int size = 1;
+size_t get_local(size_t grid, int rank, int size, int ghost) {
+  // int size = 1;
   size_t rest, local;
-
-#ifdef MPI
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
-#endif
 
   rest = grid % size;
   // Local vertical dimension
@@ -147,18 +133,18 @@ size_t get_local(size_t grid, int rank, int ghost) {
   return local;
 }
 
-size_t get_count(size_t grid, int rank, int ghost) {
-  return get_local(grid, rank, ghost) * grid;
+size_t get_count(size_t grid, int rank, int size, int ghost) {
+  return get_local(grid, rank, size, ghost) * grid;
 }
 
-size_t get_displacement(size_t grid, int rank, int ghost) {
+size_t get_displacement(size_t grid, int rank, int size, int ghost) {
   int i;
   size_t displ;
 
   displ = 0;
 
   for (i = 0; i < rank; i++)
-    displ += get_count(grid, i, ghost);
+    displ += get_count(grid, i, size, ghost);
 
   return displ;
 }

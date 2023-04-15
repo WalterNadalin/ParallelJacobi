@@ -11,11 +11,21 @@
 #include <mpi.h>
 #endif
 
-size_t get_local(size_t, int, int); // Local dimension
-size_t get_count(size_t, int, int); // Local number of element
-size_t get_displacement(size_t, int, int); // Global grid displacement
-void evolve(double *, double *, size_t, double *, double *); // Evolution step
-void initialize(double *, double *, size_t, double *); // Initialize matrices
+size_t get_local(size_t, int, int, int); // Local dimension
+size_t get_count(size_t, int, int, int); // Local number of element
+size_t get_displacement(size_t, int, int, int); // Global grid displacement
+
+#ifdef OPENACC
+#pragma acc routine gang
+#endif
+void evolve(double *, double *, size_t, size_t, double *, double *); // Evolution step
+
+#ifdef OPENACC
+#pragma acc routine gang
+#endif
+void initialize(double *, double *, size_t, int, int, double *); // Initialize matrices
+
+
 void jacobi(double *, double *, size_t, size_t, double *, double *); // Simulation 
 double seconds(void); // Return the elapsed time
 
