@@ -1,3 +1,4 @@
+#!/bin/bash
 #SBATCH -A tra23_units
 #SBATCH -p m100_usr_prod
 #SBATCH --time 02:00:00       # format: HH:MM:SS
@@ -13,35 +14,33 @@
 module load autoload hpc-sdk
 module load autoload spectrum_mpi
 
-make clean
-make benchmark mode=mpi
-make benchmark mode=openacc
+make mpi
+make cuda
 
 rm data/times.dat
 echo -e "sign\tsize\titrs\tprcs\tcomm\t\tcomp" >> data/times.dat
 
-for iters in {5000..10000..5000}
+for iters in {10..100..50}
 do
-        for dim in {5000..10000..5000}
-        do
-                prc=32
+	for dim in {10..100..50}
+	do
+		prc=32
 
-                for value in {1..4}
-                do
-                        mpirun -np $prc -npernode 32 --map-by socket --bind-to core ./mpi_jacobi.x $dim $iters
-                        ((prc*=2))
-                done
+		for value in {1..4}
+		do
+			mpirun -np $prc -npernode 32 --map-by socket --bind-to core ./cuda_mpi.x $dim $iters
+			((prc*=2))
+		done
 
-                prc=4
+		prc=4
 
-                for value in {1..4}
-                do
-                        mpirun -np $prc -npernode 4 -npersocket 2 --bind-to core ./cuda_jacobi.x $dim $iters
-                        ((prc*=2))
-                done
+		for value in {1..4}
+		do
+			mpirun -np $prc -npernode 4 -npersocket 2 --bind-to core ./cuda_jacobi.x $dim $iters
+			((prc*=2))
+		done
 
-        done
+	done
 done
 
-make clean
-             
+make clean flush

@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 #endif
 
-  count = get_count(grid, rank, size, 1); // Local elements with ghost cells
+  count = get_count(grid, rank, 1); // Local elements with ghost cells
   old = (double *)malloc(count * sizeof(double));
   new = (double *)malloc(count * sizeof(double));
 
@@ -57,10 +57,10 @@ int main(int argc, char **argv) {
 #endif
 
   if (rank == 0) {
-#ifdef OPENACC
-    char *sign = "openacc";
-#elif MPI
+#ifdef MPI
     char *sign = "mpi";
+#elif CUDA
+    char *sign = "cuda";
 #else
     char *sign = "serial";
 #endif

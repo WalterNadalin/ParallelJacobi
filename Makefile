@@ -26,19 +26,19 @@ OBJ := $(SRCS:.c=.o) $(MAIN:.c=.o)
 EXE := $(MAIN:.c=.x)
 
 # Make
-all: $(PREFIX)$(EXE)
+all: clean $(PREFIX)$(EXE)
 
 mpi: CC := mpicc
 mpi: CFLAGS += -DMPI
 mpi mpirun: EXE := mpi_$(EXE)
 
-openacc: CC := pgcc
-openacc: CFLAGS += -DMPI -DOPENACC -Minfo=all -acc -ta=tesla
-openacc: INCLUDE += $(IMPI)
-openacc: LINK := $(LMPI)
-openacc openaccrun: EXE := openacc_$(EXE)
+cuda: CC := pgcc
+cuda: CFLAGS += -DMPI -DCUDA
+cuda: INCLUDE += $(IMPI)
+cuda: LINK := $(LMPI)
+cuda cudarun: EXE := cuda_$(EXE)
 
-mpi openacc: all
+mpi cuda: all
 
 # Compiling the object files
 %.o: %.c 
@@ -52,9 +52,9 @@ $(EXE): $(OBJ)
 run:
 	$(SCRIPT) $(COMMAND) ./$(EXE) $(dim) $(iters)
 
-mpirun openaccrun: SCRIPT := mpirun
-mpirun openaccrun: COMMAND := -np $(prc)
-mpirun openaccrun: run
+mpirun cudarun: SCRIPT := mpirun
+mpirun cudarun: COMMAND := -np $(prc)
+mpirun cudarun: run
 
 debug: CFLAGS += -DDEBUG
 	
