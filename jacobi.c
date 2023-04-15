@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
   MPI_Init(&argc, &argv);
 #endif
 
-  double cp_time, io_time; // Timing variables
+  double cp_time, init_time; // Timing variables
   double *old, *new;       // Matrices
   size_t dim, itrs, count, grid;
   int rank = 0, size = 1;
@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
   old = (double *)malloc(count * sizeof(double));
   new = (double *)malloc(count * sizeof(double));
 
-  jacobi(old, new, grid, itrs, &cp_time, &io_time);
+  jacobi(old, new, grid, itrs, &cp_time, &init_time);
 
 #ifndef BENCHMARK
   char *data = "data/solution.dat";
@@ -58,16 +58,16 @@ int main(int argc, char **argv) {
 
   if (rank == 0) {
 #ifdef MPI
-    char *sign = "mpi";
-#elif CUDA
-    char *sign = "cuda";
+    char *mode = "mpi";
+#elif OPENACC
+    char *mode = "OPENACC";
 #else
-    char *sign = "serial";
+    char *mode = "serial";
 #endif
 
     file = fopen(times, "a");
-    fprintf(file, "%s\t%zu\t%zu\t%d\t%lf\t%lf\n", sign, dim, itrs, size,
-            io_time, cp_time);
+    fprintf(file, "%s\t%zu\t%zu\t%d\t%lf\t%lf\n", mode, dim, itrs, size,
+            init_time, cp_time);
     fclose(file);
   }
 

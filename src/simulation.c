@@ -2,95 +2,81 @@
 
 // Complete algorithm
 void jacobi(double *old, double *new, size_t grid, size_t itrs, double *cp_time,
-            double *io_time) {
-#ifdef CUDA
-#pragma acc data copy(old) create(new) copyin(grid) copy(io_time) copy(cp_time)
-  {
-#endif
-    double *tmp;
-    *cp_time = 0;
-    *io_time = 0;
-
-    initialize(old, new, grid, io_time); // Initialize grid
-
-    for (size_t i = 0; i < itrs; ++i) {
-      evolve(old, new, grid, cp_time, io_time); // Compute evolution
-
-#ifdef FRAMES // Save frames to make GIF
-      size_t div = (itrs > FRAMES) ? FRAMES : itrs;
-
-      if (!(i % (itrs / div))) {
-        char str[80];
-        sprintf(str, "video/%05zu.png", i / (itrs / div)); // Title of the plot
-        plot(old, grid - 2, str);
-      }
-#endif
-
-      tmp = old; // Swap the pointers
-      old = new;
-      new = tmp;
-    }
-#ifdef CUDA
-  }
-#endif
-}
-
-// Compute single iteration
-void evolve(double *old, double *new, size_t grid, double *cp_time,
-            double *io_time) {
+            double *init_time) {
+  double *tmp;
   double first, second, third; // For time measures
-  size_t i, j, local;
+  size_t i, j, k, local;
   int rank = 0;
 
+  *cp_time = 0;
+  *init_time = 0;
+
+  first = seconds();
+  initialize(old, new, grid, init_time); // Initialize grid
+  second = seconds();
+
 #ifdef MPI
-  size_t destination, source;
+  size_t backward, forward;
   int size;
   MPI_Status status;
 
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
-  MPI_Barrier(MPI_COMM_WORLD);
+  
+  backward = (rank == 0) ? MPI_PROC_NULL : rank - 1;
+  forward = (rank == size - 1) ? MPI_PROC_NULL : rank + 1;
 #endif
 
-  first = seconds();
   local = get_local(grid, rank, 1);
 
+#ifdef OPENACC
+#pragma acc data copy(old) create(new) copyin(grid) copy(init_time) copy(cp_time)
+#endif
+  for (k = 0; k < itrs; ++k) {
 #ifdef MPI // Exchanging ghost-cells
-  destination = (rank == 0) ? MPI_PROC_NULL : rank - 1;
-  source = (rank == size - 1) ? MPI_PROC_NULL : rank + 1;
-  MPI_Sendrecv(old + grid, grid, MPI_DOUBLE, destination, rank + size,
-               old + (local - 1) * grid, grid, MPI_DOUBLE, source,
-               rank + size + 1, MPI_COMM_WORLD, &status);
-
-  destination = (rank == size - 1) ? MPI_PROC_NULL : rank + 1;
-  source = (rank == 0) ? MPI_PROC_NULL : rank - 1;
-  MPI_Sendrecv(old + (local - 2) * grid, grid, MPI_DOUBLE, destination,
-               rank + size, old, grid, MPI_DOUBLE, source, rank + size - 1,
-               MPI_COMM_WORLD, &status);
-
-  MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Sendrecv(old + grid, grid, MPI_DOUBLE, backward, rank + size,
+                 old + (local - 1) * grid, grid, MPI_DOUBLE, forward,
+                 rank + size + 1, MPI_COMM_WORLD, &status);
+    MPI_Sendrecv(old + (local - 2) * grid, grid, MPI_DOUBLE, forward,
+                 rank + size, old, grid, MPI_DOUBLE, backward, rank + size - 1,
+                 MPI_COMM_WORLD, &status);
 #endif
 
-  second = seconds();
+#ifdef OPENACC
+#pragma acc parallel loop
+#endif
+    for (i = 1; i < local - 1; ++i) // Computing evolution
+      for (j = 1; j < grid - 1; ++j) // Update
+        new[i * grid + j] =
+           0.25 * (old[(i - 1) * grid + j] + old[i * grid + j + 1] +
+                   old[(i + 1) * grid + j] + old[i * grid + j - 1]); 
 
-  //#pragma acc parallel loop
-  for (i = 1; i < local - 1; ++i) // Computing evolution
-    for (j = 1; j < grid - 1; ++j)
-      new[i * grid + j] =
-          0.25 * (old[(i - 1) * grid + j] + old[i * grid + j + 1] +
-                  old[(i + 1) * grid + j] + old[i * grid + j - 1]); // Update
+#ifdef FRAMES // Save frames to make GIF
+    size_t div = (itrs > FRAMES) ? FRAMES : itrs;
+
+    if (!(i % (itrs / div))) {
+      char str[80];
+      sprintf(str, "video/%05zu.png", i / (itrs / div)); // Title of the plot
+      plot(old, grid - 2, str);
+    }
+#endif
+
+    tmp = old; // Swap the pointers
+    old = new;
+    new = tmp;
+  }
 
 #ifdef MPI
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
   third = seconds();
-  *io_time += second - first;
+  *init_time += second - first;
   *cp_time += third - second;
 }
 
 // Initialize grid
-void initialize(double *old, double *new, size_t grid, double *io_time) {
+void initialize(double *old, double *new, size_t grid, double *init_time) {
   double increment, first, second;
   size_t i, j, local, lower, displ;
   int rank = 0, size = 1;
@@ -122,7 +108,7 @@ void initialize(double *old, double *new, size_t grid, double *io_time) {
   }
 
   second = seconds();
-  *io_time = second - first;
+  *init_time = second - first;
 }
 
 size_t get_local(size_t grid, int rank, int ghost) {
