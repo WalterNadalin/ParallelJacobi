@@ -3,9 +3,9 @@
 #SBATCH -p m100_usr_prod
 #SBATCH --time 00:30:00       # format: HH:MM:SS
 #SBATCH -N 2                  # nodes
-#SBATCH --ntasks-per-node=32 # tasks out of 128
 #SBATCH --gres=gpu:4          # gpus per node out of 4
 #SBATCH --mem=246000          # memory per node out of 246000MB
+#SBATCH --ntasks-per-node=32  # 8 tasks out of 128
 #SBATCH --ntasks-per-core=1
 #SBATCH --job-name=wanda_parallel_jacobi
 #SBATCH --mail-type=ALL
@@ -29,7 +29,7 @@ do
 
                 for value in {1..2}
                 do
-                        mpirun -np $prc -npernode 32 --map-by socket ./mpi_jacobi.x $dim $iters
+                        mpirun -np $prc -npernode 32 ./mpi_jacobi.x $dim $iters
                         ((prc*=2))
                 done
 
@@ -37,7 +37,7 @@ do
 
                 for value in {1..2}
                 do
-                        mpirun -np $prc -npernode 4 -npersocket 2 ./openacc_jacobi.x $dim $iters
+                        mpirun -np $prc -npersocket 2 ./openacc_jacobi.x $dim $iters
                         ((prc*=2))
                 done
 

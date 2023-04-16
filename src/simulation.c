@@ -2,9 +2,9 @@
 
 // Complete algorithm
 void jacobi(double *old, double *new, const size_t grid, const size_t itrs,
-            double *cp_time, double *init_time) {
+            double *cp_time, double *io_time) {
   double *tmp;
-  double first, second, third, fourth = 0, fifth = 0; // For time measures
+  double first, second, third, comm = 0; // For time measures
   size_t i, j, k;
   int rank = 0;
 
@@ -14,6 +14,7 @@ void jacobi(double *old, double *new, const size_t grid, const size_t itrs,
 
 #ifdef MPI
   int size;
+  double fourth, fifth;
   MPI_Status status;
 
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -26,20 +27,28 @@ void jacobi(double *old, double *new, const size_t grid, const size_t itrs,
   const size_t local = get_local(grid, rank, 1);
 
 #ifdef OPENACC
-  size_t count;
-  count = local * grid;
-
-#pragma acc data copy(old[:count]) copyin(new[:count])
-  {
-    const acc_device_t devtype = acc_get_device_type();
-    const int devs = acc_get_num_devices(devtype);
-    acc_set_device_num(rank % devs, devtype);
+int local_rank;
+  MPI_Comm shmcomm;
+  MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
+                      MPI_INFO_NULL, &shmcomm);
+  MPI_Comm_rank(shmcomm, &local_rank);
+   
+  const size_t count = local * grid;
+   const acc_device_t devtype = acc_get_device_type();
+   const int devs = acc_get_num_devices(devtype);
+   printf("%d %d\n", rank, rank % devs);
+   acc_set_device_num(local_rank % devs, devtype);
+  acc_init(devtype);
+#pragma acc enter data copyin(old[:count], new[:count])
+   //{
 #endif
     for (k = 0; k < itrs; ++k) {
 #ifdef MPI // Exchanging ghost-cells
       MPI_Barrier(MPI_COMM_WORLD);
       fourth = MPI_Wtime();
 
+#pragma acc host_data use_device(old)
+	    {
       MPI_Sendrecv(old + grid, grid, MPI_DOUBLE, backward, rank + size,
                    old + (local - 1) * grid, grid, MPI_DOUBLE, forward,
                    rank + size + 1, MPI_COMM_WORLD, &status);
@@ -47,18 +56,33 @@ void jacobi(double *old, double *new, const size_t grid, const size_t itrs,
                    rank + size, old, grid, MPI_DOUBLE, backward,
                    rank + size - 1, MPI_COMM_WORLD, &status);
 
+	    }
+//  #pragma acc end host_data
       MPI_Barrier(MPI_COMM_WORLD);
       fifth = MPI_Wtime();
+      comm += fifth - fourth;
+
 #endif
 
 #ifdef OPENACC
-#pragma acc parallel loop
+#pragma acc parallel loop collapse(2) present(old[:count], new[:count])
 #endif
       for (i = 1; i < local - 1; ++i)  // Computing evolution
         for (j = 1; j < grid - 1; ++j) // Update
           new[i * grid + j] =
               0.25 * (old[(i - 1) * grid + j] + old[i * grid + j + 1] +
-                      old[(i + 1) * grid + j] + old[i * grid + j - 1]);
+ 		      old[(i + 1) * grid + j] + old[i * grid + j - 1]);
+
+#ifdef OPENACC
+#pragma acc parallel loop collapse(2) present(old[:count], new[:count])
+#endif
+	for(i = 1; i < local - 1; i++)
+	  for(j = 1; j < grid - 1; j++)
+	    old[i * grid + j] = new[i * grid + j];
+
+/* tmp = old; // Swap the pointers
+      old = new;
+      new = tmp;*/
 
 #ifdef FRAMES // Save frames to make GIF
       const size_t div = (itrs > FRAMES) ? FRAMES : itrs;
@@ -69,18 +93,16 @@ void jacobi(double *old, double *new, const size_t grid, const size_t itrs,
         plot(old, grid - 2, str);
       }
 #endif
-
-      tmp = old; // Swap the pointers
-      old = new;
-      new = tmp;
+      
+     //printf("%d\n", devs);
     }
 #ifdef OPENACC
-  }
+	#pragma acc exit data copyout(old[:count], new[:count])
 #endif
 
   third = seconds();
-  *init_time = second - first + fifth - fourth;
-  *cp_time = third - second - fifth + fourth;
+  *io_time = second - first + comm;
+  *cp_time = third - second - comm;
 }
 
 // Initialize grid
