@@ -1,6 +1,7 @@
 #include "data.h"
 
-void print(double *mat, size_t grid, char *name) { // Serial print of the grid
+// Serial print of the grid
+void print(double *mat, size_t grid, const char *name) {
   size_t i, j;
   const double h = 1.f / (grid);
 
@@ -14,7 +15,8 @@ void print(double *mat, size_t grid, char *name) { // Serial print of the grid
   fclose(file);
 }
 
-void save(double *mat, size_t grid, char *name) { // Save the grid on a file
+// Save the grid on a file
+void save(double *mat, size_t grid, const char *name) {
 #ifdef MPI
   int rank;
   double *dat = NULL;
@@ -57,8 +59,8 @@ void plot(double *mat, size_t grid, char *title) { // Plot the grid
     FILE *gnuplotPipe = popen("gnuplot -persistent", "w"),
          *tmp = fopen("plot/plot.plt", "r");
     sprintf(str, "set output \'%s\'", title);
-    fprintf(gnuplotPipe, "%s\n",
-            str); // Command which sets the name of the image
+    // Command which sets the name of the image
+    fprintf(gnuplotPipe, "%s\n", str);
 
     for (i = 0; i < COMMANDS; i++) {
       read = getline(&line, &len, tmp);

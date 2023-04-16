@@ -54,7 +54,7 @@ void serial_jacobi(double *old, double *new, size_t dim, size_t itr,
   *time = end - start;
 }
 
-size_t test(char *data, size_t grd,
+size_t test(const char *data, size_t grd,
             size_t itr) { // Compare result with serial solution
   double *old, *new;      // Matrices
   size_t i, bin, bts;

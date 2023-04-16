@@ -14,10 +14,10 @@
 #include <mpi.h>
 #endif
 
-void print(double *, size_t, char *);
-void save(double *, size_t, char *); // Save matrix to file
+void print(double *, size_t, const char *);
+void save(double *, size_t, const char *); // Save matrix to file
 void plot(double *, size_t, char *);
-void gather(double*, size_t, double *);
+void gather(double *, size_t, double *);
 void get_counts(int *, int *, size_t);
 
 #endif

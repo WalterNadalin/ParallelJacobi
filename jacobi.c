@@ -20,23 +20,23 @@ int main(int argc, char **argv) {
   MPI_Init(&argc, &argv);
 #endif
 
-  double cp_time, init_time; // Timing variables
+  double cp_time, io_time; // Timing variables
   double *old, *new;       // Matrices
-  size_t dim, itrs, count, grid;
   int rank = 0, size = 1;
-  char *times = "data/times.dat"; // Where to write the results
+  const char *times = "data/times.dat"; // Where to write the results
   FILE *file;
 
   // Check on input parameters
   if (argc != 3) {
-    fprintf(stderr, "Wrong number of arguments.\nUsage: ./a.out [dimension] "
-                    "[iterations]\n");
+    fprintf(stderr,
+            "Wrong number of arguments.\nUse: ./*jacobi.out [dimension] "
+            "[iterations]\n");
     return 1;
   }
 
-  dim = atoi(argv[1]);
-  itrs = atoi(argv[2]);
-  grid = dim + 2; // Horizontal dimension of the grid
+  const size_t dim = atoi(argv[1]);
+  const size_t itrs = atoi(argv[2]);
+  const size_t grid = dim + 2; // Horizontal dimension of the grid
   rank = 0;
 
 #ifdef MPI
@@ -44,40 +44,44 @@ int main(int argc, char **argv) {
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 #endif
 
-  count = get_count(grid, rank, 1); // Local elements with ghost cells
+	// Local elements with ghost cells
+  const size_t count = get_count(grid, rank, 1);
   old = (double *)malloc(count * sizeof(double));
   new = (double *)malloc(count * sizeof(double));
 
-  jacobi(old, new, grid, itrs, &cp_time, &init_time);
+  jacobi(old, new, grid, itrs, &cp_time, &io_time); // Actual simulation
 
-#ifndef BENCHMARK
-  char *data = "data/solution.dat";
+#ifndef BENCHMARK // Saving grid on a file
+  double first, second;
+  const char *data = "data/solution.dat";
 
+  first = seconds();
   save(old, grid, data);
+  second = seconds();
+
+  io_time += second - first;
 #endif
 
-  if (rank == 0) {
+  free(old);
+  free(new);
+
+  if (!rank) { // Printing times
 #ifdef OPENACC
-    char *mode = "openacc";
+    const char *mode = "acc";
 #elif MPI
-    char *mode = "openmpi";
+    const char *mode = "mpi";
 #else
-    char *mode = "serial";
+    const char *mode = "srl";
 #endif
 
     file = fopen(times, "a");
     fprintf(file, "%s\t%zu\t%zu\t%d\t%lf\t%lf\n", mode, dim, itrs, size,
-            init_time, cp_time);
+            io_time, cp_time);
     fclose(file);
   }
 
-  if (old)
-    free(old);
-  if (new)
-    free(new);
-
-#ifdef DEBUG
-  if (rank == 0) {
+#ifdef DEBUG // Comparing results with serial implementation
+  if (!rank) {
     if (test(data, grid, itrs))
       printf("%s\nResults are compatible\n\n", GREEN);
     else
