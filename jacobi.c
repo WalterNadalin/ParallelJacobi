@@ -57,10 +57,10 @@ int main(int argc, char **argv) {
 #endif
 
   if (rank == 0) {
-#ifdef MPI
-    char *mode = "mpi";
-#elif OPENACC
-    char *mode = "OPENACC";
+#ifdef OPENACC
+    char *mode = "openacc";
+#elif MPI
+    char *mode = "openmpi";
 #else
     char *mode = "serial";
 #endif

@@ -4,12 +4,9 @@
 void jacobi(double *old, double *new, size_t grid, size_t itrs, double *cp_time,
             double *init_time) {
   double *tmp;
-  double first, second, third; // For time measures
+  double first, second, third, fourth = 0, fifth = 0; // For time measures
   size_t i, j, k, local;
   int rank = 0;
-
-  *cp_time = 0;
-  *init_time = 0;
 
   first = seconds();
   initialize(old, new, grid, init_time); // Initialize grid
@@ -30,16 +27,29 @@ void jacobi(double *old, double *new, size_t grid, size_t itrs, double *cp_time,
   local = get_local(grid, rank, 1);
 
 #ifdef OPENACC
-#pragma acc data copy(old) create(new) copyin(grid) copy(init_time) copy(cp_time)
+  size_t count;
+  count = local * grid;
+#pragma acc data copy(old[:count]) copyin(new[:count])
+  {
+  acc_device_t devtype = acc_get_device_type();
+  int devs = acc_get_num_devices(devtype);
+  // printf("%d %d\n", rank, devs);
+  acc_set_device_num(rank % devs, devtype);
 #endif
-  for (k = 0; k < itrs; ++k) {
+  for (k = 0; k < itrs; ++k) {	
 #ifdef MPI // Exchanging ghost-cells
+    MPI_Barrier(MPI_COMM_WORLD);
+    fourth = MPI_Wtime();
+
     MPI_Sendrecv(old + grid, grid, MPI_DOUBLE, backward, rank + size,
                  old + (local - 1) * grid, grid, MPI_DOUBLE, forward,
                  rank + size + 1, MPI_COMM_WORLD, &status);
     MPI_Sendrecv(old + (local - 2) * grid, grid, MPI_DOUBLE, forward,
                  rank + size, old, grid, MPI_DOUBLE, backward, rank + size - 1,
-                 MPI_COMM_WORLD, &status);
+    		 MPI_COMM_WORLD, &status);
+    
+    MPI_Barrier(MPI_COMM_WORLD);
+    fifth = MPI_Wtime();
 #endif
 
 #ifdef OPENACC
@@ -65,19 +75,18 @@ void jacobi(double *old, double *new, size_t grid, size_t itrs, double *cp_time,
     old = new;
     new = tmp;
   }
-
-#ifdef MPI
-  MPI_Barrier(MPI_COMM_WORLD);
+#ifdef OPENACC
+  }
 #endif
 
   third = seconds();
-  *init_time += second - first;
-  *cp_time += third - second;
+  *init_time = second - first + fifth - fourth;
+  *cp_time = third - second - fifth + fourth;
 }
 
 // Initialize grid
-void initialize(double *old, double *new, size_t grid, double *init_time) {
-  double increment, first, second;
+void initialize(double *old, double *new, size_t gri) {
+  double increment;
   size_t i, j, local, lower, displ;
   int rank = 0, size = 1;
 
@@ -86,7 +95,6 @@ void initialize(double *old, double *new, size_t grid, double *init_time) {
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 #endif
 
-  first = seconds();
   local = get_local(grid, rank, 0); // Local dimension without ghost cells
   displ = get_displacement(grid, rank, 0) / grid; // Global rows displacement
   lower = rank != 0;                              // Initial row
@@ -106,9 +114,6 @@ void initialize(double *old, double *new, size_t grid, double *init_time) {
     for (i = 0; i < grid; ++i)
       old[count - 1 - i] = new[count - 1 - i] = i *increment + 0.5;
   }
-
-  second = seconds();
-  *init_time = second - first;
 }
 
 size_t get_local(size_t grid, int rank, int ghost) {

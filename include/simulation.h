@@ -11,10 +11,14 @@
 #include <mpi.h>
 #endif
 
+#ifdef OPENACC
+#include <openacc.h>
+#endif
+
 size_t get_local(size_t, int, int); // Local dimension
 size_t get_count(size_t, int, int); // Local number of element
 size_t get_displacement(size_t, int, int); // Global grid displacement
-void initialize(double *, double *, size_t, double *); // Initialize matrices
+void initialize(double *, double *, size_t); // Initialize matrices
 void jacobi(double *, double *, size_t, size_t, double *, double *); // Simulation 
 double seconds(void); // Return the elapsed time
 

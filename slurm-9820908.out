@@ -1,0 +1,58 @@
+mpicc -c src/simulation.c -o src/simulation.o -O3 -Wall -DBENCHMARK -DMPI -I./include/
+src/simulation.c: In function ‘jacobi’:
+src/simulation.c:12:3: error: too many arguments to function ‘initialize’
+   initialize(old, new, grid, init_time); // Initialize grid
+   ^~~~~~~~~~
+In file included from src/simulation.c:1:
+./include/simulation.h:21:6: note: declared here
+ void initialize(double *, double *, size_t); // Initialize matrices
+      ^~~~~~~~~~
+src/simulation.c: In function ‘initialize’:
+src/simulation.c:98:21: error: ‘grid’ undeclared (first use in this function); did you mean ‘gri’?
+   local = get_local(grid, rank, 0); // Local dimension without ghost cells
+                     ^~~~
+                     gri
+src/simulation.c:98:21: note: each undeclared identifier is reported only once for each function it appears in
+make: *** [Makefile:45: src/simulation.o] Error 1
+pgcc -c src/simulation.c -o src/simulation.o -O3 -Wall -DBENCHMARK -DMPI -DOPENACC -Minfo=all -acc -ta=tesla -fast -I./include/ -I/cineca/prod/opt/compilers/spectrum_mpi/10.4.0/binary/include
+"src/simulation.c", line 12: error: too many arguments in function call
+    initialize(old, new, grid, init_time); // Initialize grid
+                               ^
+
+"src/simulation.c", line 98: error: identifier "grid" is undefined
+    local = get_local(grid, rank, 0); // Local dimension without ghost cells
+                      ^
+
+2 errors detected in the compilation of "src/simulation.c".
+make: *** [Makefile:45: src/simulation.o] Error 2
+rm: cannot remove 'data/times.dat': No such file or directory
+--------------------------------------------------------------------------
+mpirun was unable to launch the specified application as it could not access
+or execute an executable:
+
+Executable: ./mpi_jacobi.x
+Node: r221n05
+
+while attempting to start process rank 0.
+--------------------------------------------------------------------------
+32 total processes failed to start
+--------------------------------------------------------------------------
+mpirun was unable to launch the specified application as it could not access
+or execute an executable:
+
+Executable: ./mpi_jacobi.x
+Node: r221n05
+
+while attempting to start process rank 0.
+--------------------------------------------------------------------------
+64 total processes failed to start
+--------------------------------------------------------------------------
+mpirun was unable to launch the specified application as it could not access
+or execute an executable:
+
+Executable: ./openacc_jacobi.x
+Node: r221n05
+
+while attempting to start process rank 0.
+--------------------------------------------------------------------------
+4 total processes failed to start

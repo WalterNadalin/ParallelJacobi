@@ -33,7 +33,7 @@ mpi: CFLAGS += -DMPI
 mpi mpirun: EXE := mpi_$(EXE)
 
 openacc: CC := pgcc
-openacc: CFLAGS += -DMPI -DOPENACC -Minfo=all -acc -ta=tesla
+openacc: CFLAGS += -DMPI -DOPENACC -Minfo=all -acc -ta=tesla -fast
 openacc: INCLUDE += $(IMPI)
 openacc: LINK := $(LMPI)
 openacc openaccrun: EXE := openacc_$(EXE)
