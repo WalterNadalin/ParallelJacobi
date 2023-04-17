@@ -65,6 +65,9 @@ frames: CFLAGS += -DFRAMES=$(frames)
 
 debug benchmark frames: $(mode)
 
+analysis:
+	python analysis/bar_plot.py
+
 plot:
 	@if [ -e data/solution.dat ]; then\
 		gnuplot -p plot/plot.plt || echo "Please install ${YELLOW}gnuplot${NC} to run this command";\
@@ -88,4 +91,4 @@ flush:
 format: $(SRCS) $(MAIN)
 	@clang-format -i $^ -verbose || echo "Please install ${YELLOW}clang-format${NC} to run this command"
 
-.PHONY: debug benchmark clean flush frames plot gif format
+.PHONY: analysis debug benchmark clean flush frames plot gif format
