@@ -1,6 +1,6 @@
-#include "data.h"
-#include "simulation.h"
-#include "test.h"
+#include "data.h" // Serial and parallel write on file
+#include "simulation.h" // Main algorithm
+#include "test.h" // Test with serial implementation
 #include <limits.h>
 #include <math.h>
 #include <stdint.h>
@@ -21,12 +21,12 @@ int main(int argc, char **argv) {
 #endif
 
   double cp_time = 0, io_time = 0, cm_time = 0; // Timing variables
-  double *old, *new;       // Matrices
+  double *old, *new;                            // Matrices
   int rank = 0, size = 1;
   const char *times = "data/times.dat"; // Where to write the results
   FILE *file;
 
-  // Check on input parameters
+  // Check input parameters ////////////////////////////////////////////////////
   if (argc != 3) {
     fprintf(stderr,
             "Wrong number of arguments.\nUse: ./*jacobi.out [dimension] "
@@ -44,14 +44,16 @@ int main(int argc, char **argv) {
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 #endif
 
-	// Local elements with ghost cells
+  // Initializing local elements with ghost cells //////////////////////////////
   const size_t count = get_count(grid, rank, 1);
   old = (double *)malloc(count * sizeof(double));
   new = (double *)malloc(count * sizeof(double));
 
+  // Executing the algotithm //////////////////////////////////////////////////
   jacobi(old, new, grid, itrs, &cp_time, &cm_time); // Actual simulation
 
-#ifndef BENCHMARK // Saving grid on a file
+#ifndef BENCHMARK
+  // Saving grid on a file ////////////////////////////////////////////////////
   double first, second;
   const char *data = "data/solution.dat";
 
@@ -65,7 +67,8 @@ int main(int argc, char **argv) {
   free(old);
   free(new);
 
-  if (!rank) { // Printing times
+  // Printing times ///////////////////////////////////////////////////////////
+  if (!rank) {
 #ifdef OPENACC
     const char *mode = "acc";
 #elif MPI
@@ -80,7 +83,8 @@ int main(int argc, char **argv) {
     fclose(file);
   }
 
-#ifdef DEBUG // Comparing results with serial implementation
+  // Comparing results with serial implementation /////////////////////////////
+#ifdef DEBUG //
   if (!rank) {
     if (test(data, grid, itrs))
       printf("%s\nResults are compatible\n\n", GREEN);

@@ -49,12 +49,13 @@ $(EXE): $(OBJ)
 	$(CC) -o $(PREFIX)$(EXE) $^ $(LINK) $(CFLAGS)
 	@rm $(OBJ)
 
-run:
-	$(SCRIPT) $(COMMAND) ./$(EXE) $(dim) $(iters)
-
 mpirun openaccrun: SCRIPT := mpirun
 mpirun openaccrun: COMMAND := -np $(prc)
 mpirun openaccrun: run
+
+# Running the executable
+run:
+	$(SCRIPT) $(COMMAND) ./$(EXE) $(dim) $(iters)
 
 debug: CFLAGS += -DDEBUG
 	

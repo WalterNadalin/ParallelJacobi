@@ -1,9 +1,9 @@
 #include "simulation.h"
 
-// Complete algorithm
+// Main algorithm ////////////////////////////////////////////////////////////
 void jacobi(double *old, double *new, const size_t grid, const size_t itrs,
             double *cp_time, double *cm_time) {
-  //double *tmp;
+  // double *tmp;
   double first, second, third; // For time measures
   size_t i, j, k;
   int rank = 0;
@@ -15,7 +15,7 @@ void jacobi(double *old, double *new, const size_t grid, const size_t itrs,
   *cp_time = 0;
   *cp_time += second - first;
 
-#ifdef MPI
+#ifdef MPI // Variables for sending and receiving ghost cells
   int size;
   double fourth, fifth;
   double *send_lwr, *send_upr, *recv_lwr, *recv_upr;
@@ -27,100 +27,88 @@ void jacobi(double *old, double *new, const size_t grid, const size_t itrs,
   const size_t backward = (rank == 0) ? MPI_PROC_NULL : rank - 1;
   const size_t forward = (rank == size - 1) ? MPI_PROC_NULL : rank + 1;
 #endif
-  
+
   const size_t local = get_local(grid, rank, 1);
 
-#ifdef MPI
-  	send_lwr = old + grid;
-	send_upr = old + (local - 2) * grid;
-       	recv_lwr = old;
-	recv_upr = old + (local - 1) * grid;
+#ifdef MPI // Starting pointers of the ghost cells
+  send_lwr = old + grid;
+  send_upr = old + (local - 2) * grid;
+  recv_lwr = old;
+  recv_upr = old + (local - 1) * grid;
 #endif
 
-#ifdef OPENACC
-int local_rank;
+#ifdef OPENACC // Selecting the device on which do the offloading
+  const size_t count = local * grid;
+  int local_rank;
   MPI_Comm shmcomm;
-  MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0,
-                      MPI_INFO_NULL, &shmcomm);
+  const acc_device_t devtype = acc_get_device_type();
+  const int devs = acc_get_num_devices(devtype); // How many GPUs there are
+
+  MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL,
+                      &shmcomm);
   MPI_Comm_rank(shmcomm, &local_rank);
-   
-   const size_t count = local * grid;
-   const acc_device_t devtype = acc_get_device_type();
-   const int devs = acc_get_num_devices(devtype);
-   printf("%d %d\n", rank, rank % devs);
-   acc_set_device_num(local_rank % devs, devtype);
+  acc_set_device_num(local_rank % devs, devtype); // Selecting GPU
   acc_init(devtype);
 #pragma acc enter data copyin(old[:count], new[:count])
-   //{
 #endif
-    for (k = 0; k < itrs; ++k) {
+
+  for (k = 0; k < itrs; ++k) {
 #ifdef MPI // Exchanging ghost-cells
-      MPI_Barrier(MPI_COMM_WORLD);
-      fourth = MPI_Wtime();
+    MPI_Barrier(MPI_COMM_WORLD);
+    fourth = MPI_Wtime();
 
 #ifdef OPENACC
 #pragma acc update host(send_lwr[:grid], send_upr[:grid])
 #endif
-     {
-      MPI_Sendrecv(send_lwr, grid, MPI_DOUBLE, backward, rank + size,
-                   recv_upr, grid, MPI_DOUBLE, forward,
-                   rank + size + 1, MPI_COMM_WORLD, &status);
-      MPI_Sendrecv(send_upr, grid, MPI_DOUBLE, forward, rank + size, 
-		   recv_lwr, grid, MPI_DOUBLE, backward,
-                   rank + size - 1, MPI_COMM_WORLD, &status);
-	    }
+    MPI_Sendrecv(send_lwr, grid, MPI_DOUBLE, backward, rank + size, recv_upr,
+                 grid, MPI_DOUBLE, forward, rank + size + 1, MPI_COMM_WORLD,
+                 &status);
+    MPI_Sendrecv(send_upr, grid, MPI_DOUBLE, forward, rank + size, recv_lwr,
+                 grid, MPI_DOUBLE, backward, rank + size - 1, MPI_COMM_WORLD,
+                 &status);
 #ifdef OPENACC
 #pragma acc update device(recv_lwr[:grid], recv_upr[:grid])
 #endif
-      MPI_Barrier(MPI_COMM_WORLD);
-      fifth = MPI_Wtime();
-      *cm_time += fifth - fourth;
-
+    MPI_Barrier(MPI_COMM_WORLD);
+    fifth = MPI_Wtime();
+    *cm_time += fifth - fourth; // Communication time
 #endif
 
 #ifdef OPENACC
 #pragma acc parallel loop collapse(2) present(old[:count], new[:count])
 #endif
-      for (i = 1; i < local - 1; ++i)  // Computing evolution
-        for (j = 1; j < grid - 1; ++j) // Update
-          new[i * grid + j] =
-              0.25 * (old[(i - 1) * grid + j] + old[i * grid + j + 1] +
- 		      old[(i + 1) * grid + j] + old[i * grid + j - 1]);
+    for (i = 1; i < local - 1; ++i) // Computing evolution
+      for (j = 1; j < grid - 1; ++j)
+        new[i * grid + j] =
+            0.25 * (old[(i - 1) * grid + j] + old[i * grid + j + 1] +
+                    old[(i + 1) * grid + j] + old[i * grid + j - 1]);
 
 #ifdef OPENACC
-//#pragma acc host_data use_device(old, new, tmp)
 #pragma acc parallel loop collapse(2) present(old[:count], new[:count])
 #endif
-	for(i = 1; i < local - 1; i++)
-	  for(j = 1; j < grid - 1; j++)
-	    old[i * grid + j] = new[i * grid + j];
-	    
-     /* { tmp = old; // Swap the pointers
-      old = new;
-      new = tmp;
-      }*/
+    for (i = 1; i < local - 1; i++) // Updating
+      for (j = 1; j < grid - 1; j++)
+        old[i * grid + j] = new[i * grid + j];
 
 #ifdef FRAMES // Save frames to make GIF
-      const size_t div = (itrs > FRAMES) ? FRAMES : itrs;
+    const size_t div = (itrs > FRAMES) ? FRAMES : itrs;
 
-      if (!(i % (itrs / div))) {
-        char str[80];
-        sprintf(str, "video/%05zu.png", i / (itrs / div)); // Title of the plot
-        plot(old, grid - 2, str);
-      }
-#endif
-      
-     //printf("%d\n", devs);
+    if (!(i % (itrs / div))) {
+      char str[80];
+      sprintf(str, "video/%05zu.png", i / (itrs / div)); // Title of the plot
+      plot(old, grid - 2, str);
     }
+#endif
+  }
 #ifdef OPENACC
-	#pragma acc exit data copyout(old[:count], new[:count])
+#pragma acc exit data copyout(old[:count], new[:count])
 #endif
 
   third = seconds();
   *cp_time += third - second - *cm_time;
 }
 
-// Initialize grid
+// Initialize grid ///////////////////////////////////////////////////////////
 void initialize(double *old, double *new, const size_t grid) {
   size_t i, j;
   int rank = 0, size = 1;
@@ -154,6 +142,7 @@ void initialize(double *old, double *new, const size_t grid) {
   }
 }
 
+// Utility functions /////////////////////////////////////////////////////////
 size_t get_local(const size_t grid, int rank, const int ghost) {
   int size = 1;
   size_t local;
