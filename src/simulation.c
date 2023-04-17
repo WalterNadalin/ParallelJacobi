@@ -12,8 +12,7 @@ void jacobi(double *old, double *new, const size_t grid, const size_t itrs,
   initialize(old, new, grid); // Initialize grid
   second = seconds();
   *cm_time = 0;
-  *cp_time = 0;
-  *cp_time += second - first;
+  *cp_time = second - first;
 
 #ifdef MPI // Variables for sending and receiving ghost cells
   int size;
