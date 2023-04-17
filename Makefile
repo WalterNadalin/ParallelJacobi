@@ -82,7 +82,7 @@ clean:
 	@rm -f *$(EXE) src/*.o *.o 
 	
 flush:
-	@rm -f video/*.png plot/*.png video/animation.gif data/*.dat
+	@rm -f video/*.png plot/*.png video/animation.gif data/solution.dat
 
 format: $(SRCS) $(MAIN)
 	@clang-format -i $^ -verbose || echo "Please install ${YELLOW}clang-format${NC} to run this command"

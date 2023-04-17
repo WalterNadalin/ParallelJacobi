@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
   MPI_Init(&argc, &argv);
 #endif
 
-  double cp_time, io_time; // Timing variables
+  double cp_time = 0, io_time = 0, cm_time = 0; // Timing variables
   double *old, *new;       // Matrices
   int rank = 0, size = 1;
   const char *times = "data/times.dat"; // Where to write the results
@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
   old = (double *)malloc(count * sizeof(double));
   new = (double *)malloc(count * sizeof(double));
 
-  jacobi(old, new, grid, itrs, &cp_time, &io_time); // Actual simulation
+  jacobi(old, new, grid, itrs, &cp_time, &cm_time); // Actual simulation
 
 #ifndef BENCHMARK // Saving grid on a file
   double first, second;
@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
   save(old, grid, data);
   second = seconds();
 
-  io_time += second - first;
+  io_time = second - first;
 #endif
 
   free(old);
@@ -75,8 +75,8 @@ int main(int argc, char **argv) {
 #endif
 
     file = fopen(times, "a");
-    fprintf(file, "%s\t%zu\t%zu\t%d\t%lf\t%lf\n", mode, dim, itrs, size,
-            io_time, cp_time);
+    fprintf(file, "%s\t%zu\t%zu\t%d\t%lf\t%lf\t%lf\n", mode, dim, itrs, size,
+            io_time, cp_time, cm_time);
     fclose(file);
   }
 

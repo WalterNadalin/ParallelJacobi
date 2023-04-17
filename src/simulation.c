@@ -2,19 +2,23 @@
 
 // Complete algorithm
 void jacobi(double *old, double *new, const size_t grid, const size_t itrs,
-            double *cp_time, double *io_time) {
-  double *tmp;
-  double first, second, third, comm = 0; // For time measures
+            double *cp_time, double *cm_time) {
+  //double *tmp;
+  double first, second, third; // For time measures
   size_t i, j, k;
   int rank = 0;
 
   first = seconds();
   initialize(old, new, grid); // Initialize grid
   second = seconds();
+  *cm_time = 0;
+  *cp_time = 0;
+  *cp_time += second - first;
 
 #ifdef MPI
   int size;
   double fourth, fifth;
+  double *send_lwr, *send_upr, *recv_lwr, *recv_upr;
   MPI_Status status;
 
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -23,8 +27,15 @@ void jacobi(double *old, double *new, const size_t grid, const size_t itrs,
   const size_t backward = (rank == 0) ? MPI_PROC_NULL : rank - 1;
   const size_t forward = (rank == size - 1) ? MPI_PROC_NULL : rank + 1;
 #endif
-
+  
   const size_t local = get_local(grid, rank, 1);
+
+#ifdef MPI
+  	send_lwr = old + grid;
+	send_upr = old + (local - 2) * grid;
+       	recv_lwr = old;
+	recv_upr = old + (local - 1) * grid;
+#endif
 
 #ifdef OPENACC
 int local_rank;
@@ -33,7 +44,7 @@ int local_rank;
                       MPI_INFO_NULL, &shmcomm);
   MPI_Comm_rank(shmcomm, &local_rank);
    
-  const size_t count = local * grid;
+   const size_t count = local * grid;
    const acc_device_t devtype = acc_get_device_type();
    const int devs = acc_get_num_devices(devtype);
    printf("%d %d\n", rank, rank % devs);
@@ -47,20 +58,23 @@ int local_rank;
       MPI_Barrier(MPI_COMM_WORLD);
       fourth = MPI_Wtime();
 
-#pragma acc host_data use_device(old)
-	    {
-      MPI_Sendrecv(old + grid, grid, MPI_DOUBLE, backward, rank + size,
-                   old + (local - 1) * grid, grid, MPI_DOUBLE, forward,
+#ifdef OPENACC
+#pragma acc update host(send_lwr[:grid], send_upr[:grid])
+#endif
+     {
+      MPI_Sendrecv(send_lwr, grid, MPI_DOUBLE, backward, rank + size,
+                   recv_upr, grid, MPI_DOUBLE, forward,
                    rank + size + 1, MPI_COMM_WORLD, &status);
-      MPI_Sendrecv(old + (local - 2) * grid, grid, MPI_DOUBLE, forward,
-                   rank + size, old, grid, MPI_DOUBLE, backward,
+      MPI_Sendrecv(send_upr, grid, MPI_DOUBLE, forward, rank + size, 
+		   recv_lwr, grid, MPI_DOUBLE, backward,
                    rank + size - 1, MPI_COMM_WORLD, &status);
-
 	    }
-//  #pragma acc end host_data
+#ifdef OPENACC
+#pragma acc update device(recv_lwr[:grid], recv_upr[:grid])
+#endif
       MPI_Barrier(MPI_COMM_WORLD);
       fifth = MPI_Wtime();
-      comm += fifth - fourth;
+      *cm_time += fifth - fourth;
 
 #endif
 
@@ -74,15 +88,17 @@ int local_rank;
  		      old[(i + 1) * grid + j] + old[i * grid + j - 1]);
 
 #ifdef OPENACC
+//#pragma acc host_data use_device(old, new, tmp)
 #pragma acc parallel loop collapse(2) present(old[:count], new[:count])
 #endif
 	for(i = 1; i < local - 1; i++)
 	  for(j = 1; j < grid - 1; j++)
 	    old[i * grid + j] = new[i * grid + j];
-
-/* tmp = old; // Swap the pointers
+	    
+     /* { tmp = old; // Swap the pointers
       old = new;
-      new = tmp;*/
+      new = tmp;
+      }*/
 
 #ifdef FRAMES // Save frames to make GIF
       const size_t div = (itrs > FRAMES) ? FRAMES : itrs;
@@ -101,8 +117,7 @@ int local_rank;
 #endif
 
   third = seconds();
-  *io_time = second - first + comm;
-  *cp_time = third - second - comm;
+  *cp_time += third - second - *cm_time;
 }
 
 // Initialize grid
