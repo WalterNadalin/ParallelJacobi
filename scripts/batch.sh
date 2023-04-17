@@ -22,9 +22,9 @@ make benchmark mode=openacc
 rm data/times.dat
 echo -e "mode\tsize\titrs\tprcs\tiout\t\tcomp\t\tcomm" >> data/times.dat
 
-for iters in {10000..15000..5000}
+for dim in {10000..15000..5000}
 do
-        for dim in {1000..5000..4000}
+        for iters in {1000..5000..4000}
         do
                 prc=32
 
