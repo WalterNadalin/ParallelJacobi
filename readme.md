@@ -15,57 +15,50 @@ Please refer to [parallelization](./aux/parallel.md).
 - Plotting requires [**gnuplot**](http://www.gnuplot.info/)
 - Creating gif requires [**imagemagick**](https://imagemagick.org/image/wizard.png)
 
-## Compilation
-Use:
+### Compilation
+---
+To **compile** it is possible to use the command 
 
-```make [mode]```
-
-with `[mode]`
-- Left blank to compile serial version, will produce *jacobi.x* executable
-- `mpi` to compile parallel version, will produce *mpi_jacobi.x* executable, requires `mpicc`
-- `openacc` to compile parallel accelerated version, will produce *openacc_jacobi.x* executable, requires `pgcc`
-
-## Execution
-Use:
 ```
-make run [dim=%d] [iters=%d]
-```
-to run the serial version, requires `jacobi.x` to be present. 
+make [version]
+``` 
 
+where `[version]` can be either blank, `mpi` or `openacc`. This will produce the `[version]multiplication.x` executable (the name will depend on which version it has been compiled). 
+
+### Execution
+---
+The program will initialize the data and run the simulation. To **run** it is possible to use
+
+```bash
+make [version]run [prc=%d] [dim=%d] [iters=%d]
+```
+
+where `[version]` as above, `[prc=%d]` number of processes, `[dim=%d]` dimension of the grid and `[iters=%d]` iterations of the simulation. This will produce, if necessary, the `[version]multiplication.x` executable (the name will depend on how it has been compiled) and run it. 
+
+### Test
+---
+To **test** it is possible to pass the `debug=yes` flag while making
+
+```bash
+make [version] debug=yes
+```
+
+and then run the `[version]multiplication_debug.x` executable using `mpirun`. It is also supported the command:
+
+```bash
+make [version]run debug=yes
+```
+
+which will compile (if necessary) and run immediately after.
+
+### Other
+---
 Use:
-```
-make mpirun [dim=%d] [iters=%d] [prc=%d]
-```
-to run the serial version, requires `mpi_jacobi.x` to be present. 
+- `make plot` to see the solution (that is what is obtained after the last iteration)
+ 
+  <img src="./aux/result.png" alt="Drawing" style="width: 500px;"/>
 
-Use:
-```
-make openaccrun [dim=%d] [iters=%d] [prc=%d]
-```
-to run the serial version, requires `openacc_jacobi.x` to be present. 
+- `make clean` and `make flush` to clean up
+- `make gif [delay=%d] [frames=%d]` to create GIF
 
-Where:
-- `dim` dimension of the internal grid
-- `iters` number of iterations
-- `prc` number of processes
-
-All will produce *data/solution.dat*.
-
-## Plot
-Use:
-- `make plot` to see the solution
-
-<img src="./aux/result.png" alt="Drawing" style="width: 500px;"/>
-
-Will produce *lot/result.png*
-Requires *plot/solution.dat* to work properly.
-
-## Other
-Use:
-- `make clean` to clean up
-- `make frames [dim=%d] [itr=%d] [frames=%d]` to create *images/\*.png* frames using serial version
-- `make gif [delay=%d]` to create GIF, requires *images/\*.png* frames to work properly
-
-Where `frames` number of images produced and `delay` time delay between frames in the GIF.
-
-<img src="./aux/animation.gif" alt="Drawing" style="width: 500px;"/>
+  <img src="./aux/animation.gif" alt="Drawing" style="width: 500px;"/>
