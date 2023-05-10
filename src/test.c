@@ -69,6 +69,7 @@ size_t test(const char *data, size_t grd,
   FILE *file = fopen(data, "r");
   for (i = 0; i < grd * grd; i++)
     bin = fscanf(file, "%*f %*f %lf", new + i);
+
   (void)bin;
   fclose(file);
 

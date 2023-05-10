@@ -30,8 +30,7 @@ int main(int argc, char **argv) {
   const char *data = "data/solution.dat";
 #endif
 
-  // Check input parameters ////////////////////////////////////////////////////
-  if (argc != 3) {
+  if (argc != 3) { // Check input parameters
     fprintf(stderr,
             "Wrong number of arguments.\nUse: ./jacobi.x [dimension] "
             "[iterations]\n");
@@ -48,17 +47,15 @@ int main(int argc, char **argv) {
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 #endif
 
-  // Initializing local elements with ghost cells //////////////////////////////
+  // Initializing local elements with ghost cells
   const size_t count = get_count(grid, rank, 1);
   old = (double *)malloc(count * sizeof(double));
   new = (double *)malloc(count * sizeof(double));
 
-  // Executing the algotithm //////////////////////////////////////////////////
   tt_time = seconds();
   jacobi(old, new, grid, itrs, &cp_time, &cm_time); // Actual simulation
 
-  // Saving grid on a file ////////////////////////////////////////////////////
-#ifdef PLOT
+#if defined PLOT || defined DEBUG // Saving final result on a file
   io_time = seconds();
   save(old, grid, data);
   io_time = seconds() - io_time;
@@ -69,8 +66,7 @@ int main(int argc, char **argv) {
   free(old);
   free(new);
 
-  // Printing times ///////////////////////////////////////////////////////////
-  if (!rank) {
+  if (!rank) { // Printing times
 #ifdef OPENACC
     const char *mode = "acc";
 #elif MPI
@@ -78,6 +74,11 @@ int main(int argc, char **argv) {
 #else
     const char *mode = "srl";
 #endif
+    printf("\n\tVersion: %s\n\tDimension of the grid: %zu\n\tIterations: %zu\
+            \n\tNumber of processes: %d\n\n\tTotal time: %lf\
+	    \n\tWrite time: %lf\n\tCommunication time: %lf\
+	    \n\tComputation time: %lf\n\n", mode, dim, itrs, size, tt_time,
+	    io_time, cm_time, cp_time);
 
     file = fopen(times, "a");
     fprintf(file, "%s\t%zu\t%zu\t%d\t%lf\t%lf\t%lf\t%lf\n", mode, dim, itrs, size,
@@ -85,13 +86,12 @@ int main(int argc, char **argv) {
     fclose(file);
   }
 
-  // Comparing results with serial implementation /////////////////////////////
-#ifdef DEBUG
+#ifdef DEBUG // Comparing results with serial implementation
   if (!rank) {
     if (test(data, grid, itrs))
-      printf("%s\nResults are compatible\n\n", GREEN);
+      printf("%s\tResults are compatible with the ones of the provided code\n\n", GREEN);
     else
-      printf("%s\nResults are NOT compatible\n\n", RED);
+      printf("%s\tResults are NOT compatible with the ones of the provided code\n\n", RED);
   }
 
   printf("%s", NORMAL);

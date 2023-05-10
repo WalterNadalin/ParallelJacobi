@@ -3,12 +3,13 @@ YELLOW = \033[1;33m
 NC = \033[0m
 
 # Inputs for the executables
-dim    ?= 10
-iters  ?= 100
-prc    ?= 4
-delay  ?= 20
-frames ?= 200
-mode   ?= all
+dim       ?= 10
+iters     ?= 100
+prc       ?= 4
+delay     ?= 20
+frames    ?= 200
+pernode   ?= 4
+persocket ?= 2
 
 # Compiler
 CC     := cc
@@ -65,7 +66,7 @@ openacc: openacc$(EXE)
 
 # Running the executable
 %run: %
-	mpirun -np $(prc) ./$^$(EXE) $(dim) $(iters)
+	mpirun -np $(prc) -npernode $(pernode) -npersocket $(persocket) --bind-to core ./$^$(EXE) $(dim) $(iters)
 
 run: $(EXE)
 	./$(EXE) $(dim) $(iters)

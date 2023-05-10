@@ -96,9 +96,19 @@ void jacobi(double *old, double *new, const size_t grid, const size_t itrs,
     const size_t div = (itrs > FRAMES) ? FRAMES : itrs;
 
     if (!(k % (itrs / div))) {
+#ifdef MPI
+      MPI_Barrier(MPI_COMM_WORLD);
+      fourth = MPI_Wtime();
+#endif
       char str[80];
       sprintf(str, "video/%05zu.png", k / (itrs / div)); // Title of the plot
       plot(old, grid, str);
+
+#ifdef MPI
+      MPI_Barrier(MPI_COMM_WORLD);
+      fifth = MPI_Wtime();
+      *cm_time += fifth - fourth;
+#endif
     }
 #endif
   }

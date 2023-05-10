@@ -2,7 +2,7 @@
 #SBATCH -A tra23_units
 #SBATCH -p m100_usr_prod
 #SBATCH --time 02:00:00       # format: HH:MM:SS
-#SBATCH -N 2                  # nodes
+#SBATCH -N 8                  # nodes
 #SBATCH --gres=gpu:4          # gpus per node out of 4
 #SBATCH --mem=246000          # memory per node out of 246000MB
 #SBATCH --ntasks-per-node=32  # 8 tasks out of 128
@@ -16,13 +16,11 @@ module load hpc-sdk
 module load spectrum_mpi
 
 make clean
-#make mpi
-#make openacc
-make benchmark mode=mpi
-make benchmark mode=openacc
+make mpi
+make openacc
 
 rm data/times.dat
-echo -e "mode\tsize\titrs\tprcs\ttotl\t\tiout\t\tcomp\t\tcomm" >> data/times.dat
+echo -e "mode\tsize\titrs\tprcs\ttoto\t\tdata\t\tcomp\t\tcomm" >> data/times.dat
 
 for dim in 15000 20000 25000 30000
 do
@@ -32,20 +30,19 @@ do
 
                 for value in {1..4}
                 do
-                        #mpirun -np $prc -npernode 32 ./mpi_jacobi.x $dim $iters
+                        make mpirun prc=$prc pernode=32 persocket=16 dim=$dim iters=$iters
                         ((prc*=2))
                 done
 
-                prc=8
+                prc=4
 
-               # for value in {1..4}
-               # do
-                        mpirun -np $prc -npersocket 2 ./openacc_jacobi.x $dim $iters
+                for value in {1..4}
+                do
+                        make openaccrun prc=$prc pernode=4 persocket=2 dim=$dim iters=$iters
                         ((prc*=2))
-               # done
+                done
 
         done
 done
 
 make clean
-rm *t1    
