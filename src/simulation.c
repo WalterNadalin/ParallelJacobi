@@ -90,12 +90,15 @@ void jacobi(double *old, double *new, const size_t grid, const size_t itrs,
         old[i * grid + j] = new[i * grid + j];
 
 #ifdef FRAMES // Save frames to make GIF
+#ifdef OPENACC
+#pragma acc update host(old[:count])
+#endif
     const size_t div = (itrs > FRAMES) ? FRAMES : itrs;
 
-    if (!(i % (itrs / div))) {
+    if (!(k % (itrs / div))) {
       char str[80];
-      sprintf(str, "video/%05zu.png", i / (itrs / div)); // Title of the plot
-      plot(old, grid - 2, str);
+      sprintf(str, "video/%05zu.png", k / (itrs / div)); // Title of the plot
+      plot(old, grid, str);
     }
 #endif
   }

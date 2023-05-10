@@ -1,6 +1,6 @@
-#include "data.h" // Serial and parallel write on file
+#include "data.h"       // Serial and parallel write on file
 #include "simulation.h" // Main algorithm
-#include "test.h" // Test with serial implementation
+#include "test.h"       // Test with serial implementation
 #include <limits.h>
 #include <math.h>
 #include <stdint.h>
@@ -21,15 +21,19 @@ int main(int argc, char **argv) {
 #endif
 
   double tt_time = 0, cp_time = 0, io_time = 0, cm_time = 0; // Timing variables
-  double *old, *new;                                       // Matrices
+  double *old, *new;                                         // Matrices
   int rank = 0, size = 1;
-  const char *times = "data/times.dat"; // Where to write the results
+  const char  *times = "data/times.dat"; 
   FILE *file;
+
+#if defined PLOT || defined DEBUG
+  const char *data = "data/solution.dat";
+#endif
 
   // Check input parameters ////////////////////////////////////////////////////
   if (argc != 3) {
     fprintf(stderr,
-            "Wrong number of arguments.\nUse: ./*jacobi.out [dimension] "
+            "Wrong number of arguments.\nUse: ./jacobi.x [dimension] "
             "[iterations]\n");
     return 1;
   }
@@ -53,15 +57,14 @@ int main(int argc, char **argv) {
   tt_time = seconds();
   jacobi(old, new, grid, itrs, &cp_time, &cm_time); // Actual simulation
 
-#ifndef BENCHMARK
   // Saving grid on a file ////////////////////////////////////////////////////
-  const char *data = "data/solution.dat";
-
+#ifdef PLOT
   io_time = seconds();
   save(old, grid, data);
   io_time = seconds() - io_time;
 #endif
-  tt_time = seconds() - tt_time;
+
+  tt_time = seconds() - tt_time; // Total time
 
   free(old);
   free(new);
@@ -83,7 +86,7 @@ int main(int argc, char **argv) {
   }
 
   // Comparing results with serial implementation /////////////////////////////
-#ifdef DEBUG //
+#ifdef DEBUG
   if (!rank) {
     if (test(data, grid, itrs))
       printf("%s\nResults are compatible\n\n", GREEN);

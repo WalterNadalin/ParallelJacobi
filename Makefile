@@ -3,92 +3,100 @@ YELLOW = \033[1;33m
 NC = \033[0m
 
 # Inputs for the executables
-dim = 10
-iters = 100
-prc = 4
-delay = 20
-frames = 200
-mode = all
+dim    ?= 10
+iters  ?= 100
+prc    ?= 4
+delay  ?= 20
+frames ?= 200
+mode   ?= all
 
 # Compiler
-CC := cc
+CC     := cc
 CFLAGS := -O3 -Wall
 
 # Directories
 INCLUDE := -I./include/
-IMPI := -I${SMPI_ROOT}/include
-LMPI := -L${SMPI_ROOT}/lib -lmpiprofilesupport -lmpi_ibm
+IMPI    := -I${SMPI_ROOT}/include
+LMPI    := -L${SMPI_ROOT}/lib -lmpiprofilesupport -lmpi_ibm
 
-# Source files
-SRCS := $(wildcard src/*.c)
+# Files
+SRC  := $(wildcard src/*.c)
 MAIN := $(wildcard *.c)
-OBJ := $(SRCS:.c=.o) $(MAIN:.c=.o)
-EXE := $(MAIN:.c=.x)
+OBJ  := $(SRC:.c=.o) $(MAIN:.c=.o)
+EXE  := $(MAIN:.c=.x)
+
+# Conditional flag to toggle the debugging, printing result on a file or printing frames
+ifeq ($(debug), yes)
+        CFLAGS += -DDEBUG
+        EXE    := $(EXE:.x=_debug.x)
+endif
+
+ifeq ($(plot), yes)
+        CFLAGS += -DPLOT
+        EXE    := $(EXE:.x=_plot.x)
+endif
+
+ifeq ($(video), yes)
+        CFLAGS += -DFRAMES=$(frames)
+        EXE    := $(EXE:.x=_video.x)
+endif
 
 # Make
-all: $(PREFIX)$(EXE)
+all: $(EXE)
 
-mpi: CC := mpicc
+mpi: CC     := mpicc
 mpi: CFLAGS += -DMPI
-mpi mpirun: EXE := mpi_$(EXE)
+mpi: mpi$(EXE)
 
-openacc: CC := pgcc
-openacc: CFLAGS += -DMPI -DOPENACC -Minfo=all -acc -ta=tesla -fast
+openacc: CC      := pgcc
+openacc: CFLAGS  += -DMPI -DOPENACC -Minfo=all -acc -ta=tesla -fast
 openacc: INCLUDE += $(IMPI)
-openacc: LINK := $(LMPI)
-openacc openaccrun: EXE := openacc_$(EXE)
-
-mpi openacc: all
+openacc: LINK    := $(LMPI)
+openacc: openacc$(EXE)
 
 # Compiling the object files
 %.o: %.c 
 	$(CC) -c $< -o $@ $(CFLAGS) $(INCLUDE)
 
 # Linking the executable
-$(EXE): $(OBJ) 
-	$(CC) -o $(PREFIX)$(EXE) $^ $(LINK) $(CFLAGS)
+%.x: $(OBJ) 
+	$(CC) -o $@ $^ $(LINK) $(CFLAGS)
 	@rm $(OBJ)
 
-mpirun openaccrun: SCRIPT := mpirun
-mpirun openaccrun: COMMAND := -np $(prc)
-mpirun openaccrun: run
-
 # Running the executable
-run:
-	$(SCRIPT) $(COMMAND) ./$(EXE) $(dim) $(iters)
+%run: %
+	mpirun -np $(prc) ./$^$(EXE) $(dim) $(iters)
 
-debug: CFLAGS += -DDEBUG
-	
-benchmark: CFLAGS += -DBENCHMARK
+run: $(EXE)
+	./$(EXE) $(dim) $(iters)
 
-frames: CFLAGS += -DFRAMES=$(frames)
-
-debug benchmark frames: $(mode)
-
+# Other commands
 analysis:
-	python analysis/bar_plot.py
+	@python analysis/bar_plot.py
 
-plot:
-	@if [ -e data/solution.dat ]; then\
-		gnuplot -p plot/plot.plt || echo "Please install ${YELLOW}gnuplot${NC} to run this command";\
-	else\
-		echo "Please generate data using the command ${YELLOW}make run${NC}";\
-	fi
+plot: data/solution.dat
+	@gnuplot -p plot/plot.plt || echo "Please install gnuplot";\
 
-gif:
-	@if [ -e video/00000.png ]; then\
-		magick -delay $(delay) video/*.png video/animation.gif || echo "Please install ${YELLOW}imagemagick${NC} to run this command";\
-	else\
-		echo "Please generate frames using the command ${YELLOW}make frames run${NC}";\
-	fi
+data/solution.dat: CFLAGS += -DPLOT
+data/solution.dat: $(EXE:.x=_plot.x)
+	./$^ $(dim) $(iters)
+
+gif: video/00000.png
+	@magick -delay $(delay) video/*.png video/animation.gif;
 	
+video/00000.png: CFLAGS += -DFRAMES=$(frames)
+video/00000.png: $(EXE:.x=_video.x)
+	@mkdir -p video
+	./$^ $(dim) $(iters)
+
 clean:
-	@rm -f *$(EXE) src/*.o *.o 
-	
+	@rm -f *.x *_t1
+
 flush:
 	@rm -f video/*.png plot/*.png video/animation.gif data/solution.dat
 
 format: $(SRCS) $(MAIN)
-	@clang-format -i $^ -verbose || echo "Please install ${YELLOW}clang-format${NC} to run this command"
+	@clang-format -i $^ -verbose || echo "Please install clang-format"
 
 .PHONY: analysis debug benchmark clean flush frames plot gif format
+.INTERMEDIATE: $(OBJ) data/solution.dat
