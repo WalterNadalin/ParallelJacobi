@@ -33,7 +33,7 @@ The program will initialize the data and run the simulation. To **run** it is po
 make [version]run [prc=%d] [dim=%d] [iters=%d]
 ```
 
-where `[version]` as above, `[prc=%d]` number of processes, `[dim=%d]` dimension of the grid and `[iters=%d]` iterations of the simulation. This will produce, if necessary, the `[version]multiplication.x` executable (the name will depend on how it has been compiled) and run it. 
+where `[version]` as above, `prc` number of processes, `dim` dimension of the grid and `iters` iterations of the simulation. This will produce, if necessary, the `[version]multiplication.x` executable (the name will depend on how it has been compiled) and run it. 
 
 ### Test
 ---
