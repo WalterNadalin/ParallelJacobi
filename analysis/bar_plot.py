@@ -64,9 +64,11 @@ for s in range(sections):
 	ax.set_xlabel("Number of nodes")
 	ax.legend(loc = "upper right")
 	ax.grid(linestyle = '--', axis = 'y')
-
-	title(f"Size of grid: {dim}"+r"$\times$"+f"{dim}\nIterations: {itr}", fontsize = 10)
-	suptitle('Communication and computation times per number of nodes', fontsize = 13, y = 1.03, x = 0.54)
+				
+	title(r"$\bf{Communication}$ $\bf{and}$ $\bf{computation}$ $\bf{times}$ $\bf{per}$" + \
+		  	r' $\bf{number}$ ' + r'$\bf{of}$ $\bf{nodes}$'+ f"\nSize of grid: {dim}"+r"$\times$"+ \
+	      f"{dim}\nIterations: {itr}", fontsize = 10)
+	      
 	savefig(f'analysis/{dim}_{itr}.png')
     # show()
 
