@@ -8,5 +8,5 @@ Remarks.
     
     ![Figure 2](parallel_jacobi.jpg)
     
-2.  The whole process is be parallel, that includes initialization of
+2.  The whole process is parallel, that includes initialization of
     the grid and boundary conditions, the iterative evolution and the final dump on file of the resulting grid. 
