@@ -48,7 +48,7 @@ for s in range(sections):
 			if i > 1:
 				bottom = measures[0][i - 2]
 		  
-			offset = width * multiplier - width
+			offset = width * multiplier - width / 2
 
 			p = ax.bar(nodes + offset, times, width, label = label[i], bottom = bottom, \
 						     color = bar_colors[i], edgecolor = 'black')
